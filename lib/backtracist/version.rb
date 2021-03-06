@@ -19,5 +19,5 @@
 # along with backtracist.  If not, see <http://www.gnu.org/licenses/>.
 
 module Backtracist
-  VERSION = "0.0.0"
+  VERSION = "0.1.0"
 end

@@ -18,12 +18,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with backtracist.  If not, see <http://www.gnu.org/licenses/>.
 
-require "bundler/gem_tasks"
-require "rspec/core/rake_task"
-require "standard/rake"
-require "rake/extensiontask"
+require "mkmf"
 
-RSpec::Core::RakeTask.new(:spec)
-Rake::ExtensionTask.new("backtracist_native_extension")
-
-task default: [:compile, :spec, :'standard:fix']
+create_header
+create_makefile "backtracist_native_extension"

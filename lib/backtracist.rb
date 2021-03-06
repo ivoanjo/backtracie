@@ -19,3 +19,4 @@
 # along with backtracist.  If not, see <http://www.gnu.org/licenses/>.
 
 require "backtracist/version"
+require "backtracist_native_extension"
