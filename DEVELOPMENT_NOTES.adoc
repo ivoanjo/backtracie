@@ -1,0 +1,59 @@
+= Development Notes
+
+== Ideas to explore
+
+=== Modify `rb_profile_frames` to receive target thread
+
+It looks like replacing the `GET_EC()` call with a specific thread is doable.
+
+=== Understand why `rb_profile_frames` does not return the correct iseq for a block.
+
+Given
+
+[source,ruby]
+----
+def run
+  puts "Backtracist: " + Backtracist.caller_locations.first.label
+  puts "Ruby:        " + caller_locations.first.label
+end
+
+def run2
+  1.times do
+    run
+  end
+end
+----
+
+the output is
+
+----
+Backtracist: run2
+Ruby:        block in run2
+----
+
+this is because inside `rb_profile_frames` the code goes
+
+[source,c]
+----
+/* record frame info */
+cme = rb_vm_frame_method_entry(cfp);
+if (cme && cme->def->type == VM_METHOD_TYPE_ISEQ) {
+  buff[i] = (VALUE)cme;
+}
+else {
+  buff[i] = (VALUE)cfp->iseq;
+}
+----
+
+and in this case the first branch is taken (we get the `cme`, not the `cfp->iseq`). I have no idea why.
+
+== TODO
+
+* Benchmarking
+* Tackle FIXMEs
+* Support Ruby < 3.0
+* Support showing class name, e.g. https://ivoanjo.me/blog/2020/07/05/ruby-experiment-include-class-names-in-backtraces/
+* Go beyond class name, e.g. https://ivoanjo.me/blog/2020/07/19/better-backtraces-in-ruby-using-tracepoint/
+* Implement equivalents to `Kernel#caller`, `Thread#backtrace`, `Thread#backtrace_locations`
+* Implement limits (similar to the arguments passed to the regular Ruby APIs)
+* User documentation
