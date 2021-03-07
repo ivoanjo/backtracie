@@ -18,15 +18,34 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with backtracist.  If not, see <http://www.gnu.org/licenses/>.
 
-require "backtracist/version"
-require "backtracist/location"
-
-# Note: This should be the last require, because the native extension expects all of the Ruby-defined classes above
-# to exist by the time it gets initialized
-require "backtracist_native_extension"
-
 module Backtracist
-  module_function def caller_locations
-    Primitive.caller_locations
+  # A more advanced version of Ruby's built-in Thread::Backtrace::Location
+  class Location
+    attr_accessor :absolute_path
+    attr_accessor :base_label
+    attr_accessor :label
+    attr_accessor :lineno
+    attr_accessor :path
+
+    # Note: The order of arguments is hardcoded in the native extension in the `new_location` function --
+    # keep them in sync
+    def initialize(absolute_path, base_label, label, lineno, path, debug)
+      @absolute_path = absolute_path
+      @base_label = base_label
+      @label = label
+      @lineno = lineno
+      @path = path
+      @debug = debug
+
+      freeze
+    end
+
+    def to_s
+      if @lineno != 0
+        "#{@path}:#{@lineno}:in `#{@label}'"
+      else
+        "#{@path}:in `#{@label}'"
+      end
+    end
   end
 end
