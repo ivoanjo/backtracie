@@ -21,6 +21,8 @@
 
 #include "extconf.h"
 
+#include "ruby_3.0.0.h"
+
 // Constants
 
 #define MAX_STACK_DEPTH 2000 // FIXME: Need to handle when this is not enough
@@ -59,7 +61,7 @@ static VALUE primitive_caller_locations(VALUE self) {
   VALUE frames[MAX_STACK_DEPTH];
   int lines[MAX_STACK_DEPTH];
 
-  stack_depth = rb_profile_frames(0, MAX_STACK_DEPTH, frames, lines);
+  stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, frames, lines);
 
   // Ignore:
   // * the current stack frame (native)

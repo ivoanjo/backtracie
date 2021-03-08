@@ -47,8 +47,6 @@ RSpec.describe Backtracist do
       end
 
       it "has the same label as the corresponding Kernel.caller_locations entry" do
-        pending "The rb_profile_frame_label(...) API seems to not return the 'block (n levels) in method' that we get from other APIs"
-
         caller_locations.zip(kernel_locations).each do |backtracist_location, kernel_location|
           expect(backtracist_location.label).to eq kernel_location.label
         end
