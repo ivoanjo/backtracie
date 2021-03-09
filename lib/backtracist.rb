@@ -26,7 +26,15 @@ require "backtracist/location"
 require "backtracist_native_extension"
 
 module Backtracist
-  module_function def caller_locations
+  module_function
+
+  def caller_locations
     Primitive.caller_locations
+  end
+
+  def backtrace_locations(thread)
+    raise ArgumentError, "Expected to receive instance of Thread or its subclass, got '#{thread.inspect}'" unless thread.class <= Thread
+
+    Primitive.backtrace_locations(thread)
   end
 end

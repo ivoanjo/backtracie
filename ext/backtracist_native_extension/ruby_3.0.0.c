@@ -128,11 +128,24 @@ calc_lineno(const rb_iseq_t *iseq, const VALUE *pc)
     }
 }
 
+int modified_rb_profile_frames(int start, int limit, VALUE *buff, int *lines) {
+  return modified_rb_profile_frames_for_execution_context(GET_EC(), start, limit, buff, lines);
+}
+
+int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, int *lines) {
+  // In here we're assuming that what we got is really a Thread or its subclass. This assumption NEEDS to be verified by
+  // the caller, otherwise I see a segfault in your future.
+  rb_thread_t *thread_pointer = (rb_thread_t*) DATA_PTR(thread);
+
+  if (thread_pointer->to_kill || thread_pointer->status == THREAD_KILLED) return Qnil;
+
+  return modified_rb_profile_frames_for_execution_context(thread_pointer->ec, start, limit, buff, lines);
+}
+
 int
-modified_rb_profile_frames(int start, int limit, VALUE *buff, int *lines)
+modified_rb_profile_frames_for_execution_context(rb_execution_context_t *ec, int start, int limit, VALUE *buff, int *lines)
 {
     int i;
-    const rb_execution_context_t *ec = GET_EC();
     const rb_control_frame_t *cfp = ec->cfp, *end_cfp = RUBY_VM_END_CONTROL_FRAME(ec);
     const rb_callable_method_entry_t *cme;
 

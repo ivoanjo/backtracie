@@ -2,10 +2,6 @@
 
 == Ideas to explore
 
-=== Modify `rb_profile_frames` to receive target thread
-
-It looks like replacing the `GET_EC()` call with a specific thread is doable.
-
 === Understand why `rb_profile_frames` does not return the correct iseq for a block.
 
 Given
@@ -54,6 +50,6 @@ and in this case the first branch is taken (we get the `cme`, not the `cfp->iseq
 * Support Ruby < 3.0
 * Support showing class name, e.g. https://ivoanjo.me/blog/2020/07/05/ruby-experiment-include-class-names-in-backtraces/
 * Go beyond class name, e.g. https://ivoanjo.me/blog/2020/07/19/better-backtraces-in-ruby-using-tracepoint/
-* Implement equivalents to `Kernel#caller`, `Thread#backtrace`, `Thread#backtrace_locations`
+* Implement equivalents to `Kernel#caller`, `Thread#backtrace`
 * Implement limits (similar to the arguments passed to the regular Ruby APIs)
 * User documentation

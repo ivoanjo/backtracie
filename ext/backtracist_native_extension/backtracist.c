@@ -31,9 +31,11 @@
 
 static VALUE backtracist_location_class = Qnil;
 
-// Headers
+// Function headers
 
 static VALUE primitive_caller_locations(VALUE self);
+static VALUE primitive_backtrace_locations(VALUE self, VALUE thread);
+static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_frames);
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE debug);
 static bool is_ruby_frame(VALUE ruby_frame);
 static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line);
@@ -54,20 +56,23 @@ void Init_backtracist_native_extension(void) {
   VALUE backtracist_primitive_module = rb_define_module_under(backtracist_module, "Primitive");
 
   rb_define_module_function(backtracist_primitive_module, "caller_locations", primitive_caller_locations, 0);
+  rb_define_module_function(backtracist_primitive_module, "backtrace_locations", primitive_backtrace_locations, 1);
 }
 
-static VALUE primitive_caller_locations(VALUE self) {
+// Get array of Backtracist::Locations for a given thread; if thread is nil, returns for the current thread
+static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_frames) {
   int stack_depth = 0;
   VALUE frames[MAX_STACK_DEPTH];
   int lines[MAX_STACK_DEPTH];
 
-  stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, frames, lines);
+  if (thread == Qnil) {
+    // Get for own thread
+    stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, frames, lines);
+  } else {
+    stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, frames, lines);
+  }
 
-  // Ignore:
-  // * the current stack frame (native)
-  // * the Backtracist.caller_locations that called us
-  // * the frame from the caller itself (since we're replicating the semantics of Kernel#caller_locations)
-  int ignored_stack_top_frames = 3;
+
   // Ignore the last frame -- seems to be an uninteresting VM frame. MRI itself seems to ignore the last frame in
   // the implementation of backtrace_collect()
   int ignored_stack_bottom_frames = 1;
@@ -102,6 +107,22 @@ static VALUE primitive_caller_locations(VALUE self) {
   }
 
   return locations;
+}
+
+static VALUE primitive_caller_locations(VALUE self) {
+  // Ignore:
+  // * the current stack frame (native)
+  // * the Backtracist.caller_locations that called us
+  // * the frame from the caller itself (since we're replicating the semantics of Kernel#caller_locations)
+  int ignored_stack_top_frames = 3;
+
+  return caller_locations(self, Qnil, ignored_stack_top_frames);
+}
+
+static VALUE primitive_backtrace_locations(VALUE self, VALUE thread) {
+  int ignored_stack_top_frames = 0;
+
+  return caller_locations(self, thread, ignored_stack_top_frames);
 }
 
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE debug) {
