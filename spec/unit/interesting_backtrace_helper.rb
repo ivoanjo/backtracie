@@ -110,10 +110,16 @@ class ClassF < ClassE
   end
 end
 
+ClassI = Class.new do
+  define_method(:hello) do
+    ClassF.new.hello(0, 1, 2, 3)
+  end
+end
+
 $singleton_class = Object.new.singleton_class
 
 def $singleton_class.hello
-  ClassF.new.hello(0, 1, 2, 3)
+  ClassI.new.hello
 end
 
 $anonymous_instance = Class.new do
