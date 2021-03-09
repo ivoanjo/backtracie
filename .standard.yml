@@ -1,0 +1,2 @@
+ignore:
+  - 'spec/unit/interesting_backtrace_helper.rb'
