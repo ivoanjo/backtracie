@@ -152,8 +152,14 @@ class ClassJ
   end
 end
 
+class ClassK
+  def hello
+    eval("ClassJ.new.hello", binding, __FILE__, __LINE__)
+  end
+end
+
 def top_level_hello
-  ClassJ.new.hello
+  ClassK.new.hello
 end
 
 SAMPLE_BACKGROUND_THREAD = Thread.new do
