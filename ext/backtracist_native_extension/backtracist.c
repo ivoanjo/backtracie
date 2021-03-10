@@ -1,18 +1,18 @@
 // backtracist: Ruby gem for beautiful backtraces
 // Copyright (C) 2021 Ivo Anjo <ivo@ivoanjo.me>
-// 
+//
 // This file is part of backtracist.
-// 
+//
 // backtracist is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // backtracist is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Lesser General Public License
 // along with backtracist.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -38,7 +38,7 @@ static VALUE primitive_backtrace_locations(VALUE self, VALUE thread);
 static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_frames);
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE debug);
 static bool is_ruby_frame(VALUE ruby_frame);
-static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line);
+static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label);
 static VALUE cfunc_frame_to_location(VALUE frame, VALUE last_ruby_frame, VALUE last_ruby_line);
 static VALUE debug_frame(VALUE frame);
 
@@ -63,13 +63,14 @@ void Init_backtracist_native_extension(void) {
 static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_frames) {
   int stack_depth = 0;
   VALUE frames[MAX_STACK_DEPTH];
+  VALUE correct_labels[MAX_STACK_DEPTH];
   int lines[MAX_STACK_DEPTH];
 
   if (thread == Qnil) {
     // Get for own thread
-    stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, frames, lines);
+    stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, frames, correct_labels, lines);
   } else {
-    stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, frames, lines);
+    stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, frames, correct_labels, lines);
   }
 
 
@@ -98,7 +99,7 @@ static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_fr
       last_ruby_frame = frame;
       last_ruby_line = INT2FIX(line);
 
-      location = ruby_frame_to_location(frame, last_ruby_line);
+      location = ruby_frame_to_location(frame, last_ruby_line, correct_labels[i]);
     } else {
       location = cfunc_frame_to_location(frame, last_ruby_frame, last_ruby_line);
     }
@@ -137,11 +138,11 @@ static bool is_ruby_frame(VALUE frame) {
     (rb_funcall(absolute_path, rb_intern("=="), 1, rb_str_new2("<cfunc>")) == Qfalse);
 }
 
-static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line) {
+static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label) {
   return new_location(
     rb_profile_frame_absolute_path(frame),
     rb_profile_frame_base_label(frame),
-    rb_profile_frame_label(frame),
+    rb_profile_frame_label(correct_label),
     last_ruby_line,
     rb_profile_frame_path(frame),
     debug_frame(frame)

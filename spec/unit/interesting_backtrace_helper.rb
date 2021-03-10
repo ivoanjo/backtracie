@@ -138,8 +138,22 @@ def method_with_complex_parameters(a, b = nil, *c, (d), f:, g: nil, **h, &i)
   $anonymous_module.hello
 end
 
+class ClassJ
+  def hello_helper
+    yield
+  end
+
+  def hello
+    hello_helper do
+      hello_helper do
+        method_with_complex_parameters(0, 1, 2, [3, 4], f: 5, g: 6, h: 7, &proc {})
+      end
+    end
+  end
+end
+
 def top_level_hello
-  method_with_complex_parameters(0, 1, 2, [3, 4], f: 5, g: 6, h: 7, &proc {})
+  ClassJ.new.hello
 end
 
 SAMPLE_BACKGROUND_THREAD = Thread.new do

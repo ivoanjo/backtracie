@@ -1,18 +1,18 @@
 // backtracist: Ruby gem for beautiful backtraces
 // Copyright (C) 2021 Ivo Anjo <ivo@ivoanjo.me>
-// 
+//
 // This file is part of backtracist.
-// 
+//
 // backtracist is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // backtracist is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Lesser General Public License
 // along with backtracist.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -80,7 +80,7 @@
 
 #include "rb_mjit_min_header-3.0.0.h"
 
-#include "ruby_3.0.0.h" 
+#include "ruby_3.0.0.h"
 
 /**********************************************************************
 
@@ -128,23 +128,28 @@ calc_lineno(const rb_iseq_t *iseq, const VALUE *pc)
     }
 }
 
-int modified_rb_profile_frames(int start, int limit, VALUE *buff, int *lines) {
-  return modified_rb_profile_frames_for_execution_context(GET_EC(), start, limit, buff, lines);
+int modified_rb_profile_frames(int start, int limit, VALUE *buff, VALUE *correct_labels, int *lines) {
+  return modified_rb_profile_frames_for_execution_context(GET_EC(), start, limit, buff, correct_labels, lines);
 }
 
-int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, int *lines) {
+int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, VALUE *correct_labels, int *lines) {
   // In here we're assuming that what we got is really a Thread or its subclass. This assumption NEEDS to be verified by
   // the caller, otherwise I see a segfault in your future.
   rb_thread_t *thread_pointer = (rb_thread_t*) DATA_PTR(thread);
 
   if (thread_pointer->to_kill || thread_pointer->status == THREAD_KILLED) return Qnil;
 
-  return modified_rb_profile_frames_for_execution_context(thread_pointer->ec, start, limit, buff, lines);
+  return modified_rb_profile_frames_for_execution_context(thread_pointer->ec, start, limit, buff, correct_labels, lines);
 }
 
-int
-modified_rb_profile_frames_for_execution_context(rb_execution_context_t *ec, int start, int limit, VALUE *buff, int *lines)
-{
+int modified_rb_profile_frames_for_execution_context(
+  rb_execution_context_t *ec,
+  int start,
+  int limit,
+  VALUE *buff,
+  VALUE *correct_labels,
+  int *lines
+) {
     int i;
     const rb_control_frame_t *cfp = ec->cfp, *end_cfp = RUBY_VM_END_CONTROL_FRAME(ec);
     const rb_callable_method_entry_t *cme;
@@ -156,23 +161,20 @@ modified_rb_profile_frames_for_execution_context(rb_execution_context_t *ec, int
                 continue;
             }
 
-            // I don't quite understand how this works, but cfp->iseq seems to be the right choice instead of getting
-            // the `rb_vm_frame_method_entry` -- it gives the wrong label for blocks.
-            // This means that ./spec/unit/backtracist_spec.rb:53 used to fail with
+            // Stash the iseq so we can use it for the label. Otherwise ./spec/unit/backtracist_spec.rb:53 used to fail with
             //   expected: "block (3 levels) in fetch_or_store"
             //   got: "fetch_or_store"
             // ...but works with this hack.
-            if (cfp->iseq) {
-                buff[i] = cfp->iseq;
+            correct_labels[i] = (VALUE) cfp->iseq;
+
+            /* record frame info */
+            cme = rb_vm_frame_method_entry(cfp);
+            if (cme && cme->def->type == VM_METHOD_TYPE_ISEQ) {
+                buff[i] = (VALUE)cme;
             }
-            // /* record frame info */
-            // cme = rb_vm_frame_method_entry(cfp);
-            // if (cme && cme->def->type == VM_METHOD_TYPE_ISEQ) {
-            //     buff[i] = (VALUE)cme;
-            // }
-            // else {
-            //     buff[i] = (VALUE)cfp->iseq;
-            // }
+            else {
+                buff[i] = (VALUE)cfp->iseq;
+            }
 
             if (lines) lines[i] = calc_lineno(cfp->iseq, cfp->pc);
 
