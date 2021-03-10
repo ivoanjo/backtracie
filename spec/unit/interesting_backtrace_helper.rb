@@ -16,7 +16,7 @@ end
 
 class ClassA
   def hello
-    while true
+    loop do
       SAMPLE_RESPONSES_QUEUE.push(SAMPLE_REQUESTS_QUEUE.pop.call)
     end
   end

@@ -1,4 +1,8 @@
 ignore:
-  - 'spec/unit/interesting_backtrace_helper.rb'
+  - 'spec/unit/interesting_backtrace_helper.rb': # let's just say this file is special
+    - Lint/UselessTimes
+    - Style/EvalWithLocation
+    - Style/GlobalVars
+    - Style/MissingRespondToMissing
   - 'ext/backtracist_native_extension/extconf.rb':
-      - Style/GlobalVars
+    - Style/GlobalVars
