@@ -20,5 +20,9 @@
 
 require "mkmf"
 
+# This warning gets really annoying when we include the Ruby mjit header file,
+# let's omit it
+$CFLAGS << " " << "-Wno-unused-function"
+
 create_header
 create_makefile "backtracist_native_extension"

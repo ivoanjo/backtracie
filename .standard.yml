@@ -1,2 +1,4 @@
 ignore:
   - 'spec/unit/interesting_backtrace_helper.rb'
+  - 'ext/backtracist_native_extension/extconf.rb':
+      - Style/GlobalVars
