@@ -6,3 +6,5 @@ ignore:
     - Style/MissingRespondToMissing
   - 'ext/backtracist_native_extension/extconf.rb':
     - Style/GlobalVars
+  - 'spec/unit/backtracist_spec.rb':
+    - Style/EvalWithLocation

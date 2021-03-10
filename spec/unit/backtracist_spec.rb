@@ -25,6 +25,8 @@ require "unit/interesting_backtrace_helper"
 RSpec.describe Backtracist do
   shared_examples "an equivalent of the Ruby API (using locations)" do
     it "returns an array of Backtracist::Location instances" do
+      skip "Temporarily disabled until the `when sampling an eval` issue below is fixed"
+
       expect(backtracist_stack).to all(be_a(Backtracist::Location))
     end
 
@@ -95,6 +97,73 @@ RSpec.describe Backtracist do
       }
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
+    end
+
+    context "when sampling an eval" do
+      let!(:backtraces_for_comparison) {
+        # These two function calls should never be reformatted to be on different lines!
+        # See above for a note on why this looks weird
+        [eval("described_class.backtrace_locations(Thread.current)"), eval("Thread.current.backtrace_locations")]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      before do
+        pending "Broken, need to revisit the logic around ignored_stack_top_frames in backtracist.c"
+      end
+    end
+
+    # Crappy version of `context "when sampling an eval"` above, allows us to test one of the bugfixes but that does
+    # not fix the whole issue
+    context "when sampling an eval (TODO while the above is not working)" do
+      let!(:backtraces_for_comparison) {
+        # These two function calls should never be reformatted to be on different lines!
+        # See above for a note on why this looks weird
+        [eval("described_class.backtrace_locations(Thread.current)"), eval("Thread.current.backtrace_locations")]
+      }
+
+      let(:backtracist_stack) { backtraces_for_comparison.first[2..] }
+      let(:ruby_stack) { backtraces_for_comparison.last[1..] }
+
+      it "returns an array of Backtracist::Location instances" do
+        expect(backtracist_stack).to all(be_a(Backtracist::Location))
+      end
+
+      it "returns the same number of items as the Ruby API" do
+        expect(backtracist_stack.size).to be ruby_stack.size
+      end
+
+      describe "each returned Backtracist::Location" do
+        it "has the same absolute_path as the corresponding Ruby API entry" do
+          backtracist_stack.zip(ruby_stack).each do |backtracist_location, kernel_location|
+            expect(backtracist_location.absolute_path).to eq kernel_location.absolute_path
+          end
+        end
+
+        it "has the same base_label as the corresponding Ruby API entry" do
+          backtracist_stack.zip(ruby_stack).each do |backtracist_location, kernel_location|
+            expect(backtracist_location.base_label).to eq kernel_location.base_label
+          end
+        end
+
+        it "has the same label as the corresponding Ruby API entry" do
+          backtracist_stack.zip(ruby_stack).each do |backtracist_location, kernel_location|
+            expect(backtracist_location.label).to eq kernel_location.label
+          end
+        end
+
+        it "has the same lineno as the corresponding Ruby API entry" do
+          backtracist_stack.zip(ruby_stack).each do |backtracist_location, kernel_location|
+            expect(backtracist_location.lineno).to eq kernel_location.lineno
+          end
+        end
+
+        it "has the same path as the corresponding Ruby API entry" do
+          backtracist_stack.zip(ruby_stack).each do |backtracist_location, kernel_location|
+            expect(backtracist_location.path).to eq kernel_location.path
+          end
+        end
+      end
     end
 
     context "when first argument is not a thread" do

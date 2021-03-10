@@ -134,7 +134,7 @@ inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE la
 static bool is_ruby_frame(VALUE frame) {
   VALUE absolute_path = rb_profile_frame_absolute_path(frame);
 
-  return absolute_path != Qnil &&
+  return (rb_profile_frame_path(frame) != Qnil || absolute_path != Qnil) &&
     (rb_funcall(absolute_path, rb_intern("=="), 1, rb_str_new2("<cfunc>")) == Qfalse);
 }
 
