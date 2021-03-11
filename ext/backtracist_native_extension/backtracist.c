@@ -29,6 +29,7 @@
 
 // Globals
 
+static VALUE backtracist_module = Qnil;
 static VALUE backtracist_location_class = Qnil;
 
 // Function headers
@@ -47,7 +48,10 @@ static VALUE debug_frame(VALUE frame, VALUE type);
 #define VALUE_COUNT(array) (sizeof(array) / sizeof(VALUE))
 
 void Init_backtracist_native_extension(void) {
-  VALUE backtracist_module = rb_const_get(rb_cObject, rb_intern("Backtracist"));
+  backtracist_module = rb_const_get(rb_cObject, rb_intern("Backtracist"));
+  rb_global_variable(&backtracist_module);
+
+  rb_define_module_function(backtracist_module, "backtrace_locations", primitive_backtrace_locations, 1);
 
   // We need to keep a reference to Backtracist::Locations around, to create new instances
   backtracist_location_class = rb_const_get(backtracist_module, rb_intern("Location"));
@@ -56,7 +60,6 @@ void Init_backtracist_native_extension(void) {
   VALUE backtracist_primitive_module = rb_define_module_under(backtracist_module, "Primitive");
 
   rb_define_module_function(backtracist_primitive_module, "caller_locations", primitive_caller_locations, 0);
-  rb_define_module_function(backtracist_primitive_module, "backtrace_locations", primitive_backtrace_locations, 1);
 }
 
 // Get array of Backtracist::Locations for a given thread; if thread is nil, returns for the current thread
@@ -72,7 +75,6 @@ static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_fr
   } else {
     stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, frames, correct_labels, lines);
   }
-
 
   // Ignore the last frame -- seems to be an uninteresting VM frame. MRI itself seems to ignore the last frame in
   // the implementation of backtrace_collect()
@@ -121,6 +123,8 @@ static VALUE primitive_caller_locations(VALUE self) {
 }
 
 static VALUE primitive_backtrace_locations(VALUE self, VALUE thread) {
+  rb_funcall(backtracist_module, rb_intern("ensure_object_is_thread"), 1, thread);
+
   int ignored_stack_top_frames = 0;
 
   return caller_locations(self, thread, ignored_stack_top_frames);

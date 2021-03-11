@@ -32,9 +32,12 @@ module Backtracist
     Primitive.caller_locations
   end
 
-  def backtrace_locations(thread)
-    raise ArgumentError, "Expected to receive instance of Thread or its subclass, got '#{thread.inspect}'" unless thread.class <= Thread
+  # Defined via native code only; not redirecting via Primitive to avoid an extra stack frame on the stack
+  # def backtrace_locations(thread); end
 
-    Primitive.backtrace_locations(thread)
+  private_class_method def ensure_object_is_thread(object)
+    unless object.is_a?(Thread)
+      raise ArgumentError, "Expected to receive instance of Thread or its subclass, got '#{object.inspect}'"
+    end
   end
 end
