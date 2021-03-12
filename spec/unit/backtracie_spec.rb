@@ -107,6 +107,16 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
     end
 
+    context "when sampling the interesting backtrace helper" do
+      let!(:backtraces_for_comparison) {
+        # These two function calls should never be reformatted to be on different lines!
+        # See above for a note on why this looks weird
+        [sample_interesting_backtrace { described_class.backtrace_locations(Thread.current) }, sample_interesting_backtrace { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+    end
+
     context "when first argument is not a thread" do
       it do
         expect { described_class.backtrace_locations(:foo) }.to raise_exception(ArgumentError)

@@ -76,12 +76,6 @@ static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_fr
     stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, frames, correct_labels, lines);
   }
 
-  // Ignore the last frame -- seems to be an uninteresting VM frame. MRI itself seems to ignore the last frame in
-  // the implementation of backtrace_collect()
-  int ignored_stack_bottom_frames = 1;
-
-  stack_depth -= ignored_stack_bottom_frames;
-
   VALUE locations = rb_ary_new_capa(stack_depth - ignored_stack_top_frames);
 
   // MRI does not give us the path or line number for frames implemented using C code. The convention in

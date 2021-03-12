@@ -140,6 +140,13 @@ int modified_rb_profile_frames_for_execution_context(
     const rb_control_frame_t *cfp = ec->cfp, *end_cfp = RUBY_VM_END_CONTROL_FRAME(ec);
     const rb_callable_method_entry_t *cme;
 
+    // Here we go back one frame in addition to what the original Ruby rb_profile_frames method did.
+    // Why? According to backtrace_each() in vm_backtrace.c there's two "dummy frames" (what MRI calls them) at the
+    // bottom of the stack, and we need to skip them both.
+    // I have no idea why the original rb_profile_frames omits this. Without this, sampling `Thread.main` always
+    // returned one more frame than the regular MRI APIs (which use the aforementioned backtrace_each internally).
+    end_cfp = RUBY_VM_NEXT_CONTROL_FRAME(end_cfp);
+
     for (i=0; i<limit && cfp != end_cfp;) {
         if (VM_FRAME_RUBYFRAME_P(cfp)) {
             if (start > 0) {
