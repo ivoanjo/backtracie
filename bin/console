@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "backtracist"
+require "backtracie"
 
 require "pry"
 Pry.start

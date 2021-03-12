@@ -1,20 +1,20 @@
-// backtracist: Ruby gem for beautiful backtraces
+// backtracie: Ruby gem for beautiful backtraces
 // Copyright (C) 2021 Ivo Anjo <ivo@ivoanjo.me>
 //
-// This file is part of backtracist.
+// This file is part of backtracie.
 //
-// backtracist is free software: you can redistribute it and/or modify
+// backtracie is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// backtracist is distributed in the hope that it will be useful,
+// backtracie is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with backtracist.  If not, see <http://www.gnu.org/licenses/>.
+// along with backtracie.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ruby/ruby.h"
 #include "ruby/debug.h"
@@ -29,8 +29,8 @@
 
 // Globals
 
-static VALUE backtracist_module = Qnil;
-static VALUE backtracist_location_class = Qnil;
+static VALUE backtracie_module = Qnil;
+static VALUE backtracie_location_class = Qnil;
 
 // Function headers
 
@@ -47,22 +47,22 @@ static VALUE debug_frame(VALUE frame, VALUE type);
 
 #define VALUE_COUNT(array) (sizeof(array) / sizeof(VALUE))
 
-void Init_backtracist_native_extension(void) {
-  backtracist_module = rb_const_get(rb_cObject, rb_intern("Backtracist"));
-  rb_global_variable(&backtracist_module);
+void Init_backtracie_native_extension(void) {
+  backtracie_module = rb_const_get(rb_cObject, rb_intern("Backtracie"));
+  rb_global_variable(&backtracie_module);
 
-  rb_define_module_function(backtracist_module, "backtrace_locations", primitive_backtrace_locations, 1);
+  rb_define_module_function(backtracie_module, "backtrace_locations", primitive_backtrace_locations, 1);
 
-  // We need to keep a reference to Backtracist::Locations around, to create new instances
-  backtracist_location_class = rb_const_get(backtracist_module, rb_intern("Location"));
-  rb_global_variable(&backtracist_location_class);
+  // We need to keep a reference to Backtracie::Locations around, to create new instances
+  backtracie_location_class = rb_const_get(backtracie_module, rb_intern("Location"));
+  rb_global_variable(&backtracie_location_class);
 
-  VALUE backtracist_primitive_module = rb_define_module_under(backtracist_module, "Primitive");
+  VALUE backtracie_primitive_module = rb_define_module_under(backtracie_module, "Primitive");
 
-  rb_define_module_function(backtracist_primitive_module, "caller_locations", primitive_caller_locations, 0);
+  rb_define_module_function(backtracie_primitive_module, "caller_locations", primitive_caller_locations, 0);
 }
 
-// Get array of Backtracist::Locations for a given thread; if thread is nil, returns for the current thread
+// Get array of Backtracie::Locations for a given thread; if thread is nil, returns for the current thread
 static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_frames) {
   int stack_depth = 0;
   VALUE frames[MAX_STACK_DEPTH];
@@ -115,7 +115,7 @@ static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_fr
 static VALUE primitive_caller_locations(VALUE self) {
   // Ignore:
   // * the current stack frame (native)
-  // * the Backtracist.caller_locations that called us
+  // * the Backtracie.caller_locations that called us
   // * the frame from the caller itself (since we're replicating the semantics of Kernel#caller_locations)
   int ignored_stack_top_frames = 3;
 
@@ -123,7 +123,7 @@ static VALUE primitive_caller_locations(VALUE self) {
 }
 
 static VALUE primitive_backtrace_locations(VALUE self, VALUE thread) {
-  rb_funcall(backtracist_module, rb_intern("ensure_object_is_thread"), 1, thread);
+  rb_funcall(backtracie_module, rb_intern("ensure_object_is_thread"), 1, thread);
 
   int ignored_stack_top_frames = 0;
 
@@ -132,7 +132,7 @@ static VALUE primitive_backtrace_locations(VALUE self, VALUE thread) {
 
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE debug) {
   VALUE arguments[] = { absolute_path, base_label, label, lineno, path, debug };
-  return rb_class_new_instance(VALUE_COUNT(arguments), arguments, backtracist_location_class);
+  return rb_class_new_instance(VALUE_COUNT(arguments), arguments, backtracie_location_class);
 }
 
 static bool is_ruby_frame(VALUE frame) {

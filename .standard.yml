@@ -8,7 +8,7 @@ ignore:
     - Style/EvalWithLocation
     - Style/GlobalVars
     - Style/MissingRespondToMissing
-  - 'ext/backtracist_native_extension/extconf.rb':
+  - 'ext/backtracie_native_extension/extconf.rb':
     - Style/GlobalVars
-  - 'spec/unit/backtracist_spec.rb':
+  - 'spec/unit/backtracie_spec.rb':
     - Style/EvalWithLocation

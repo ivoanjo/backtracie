@@ -1,11 +1,11 @@
-= `backtracist`
+= `backtracie`
 :toc:
 :toc-placement: macro
 :toclevels: 4
 :toc-title:
 
 image:https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg["Contributor Covenant", link="CODE_OF_CONDUCT.adoc"]
-image:https://badge.fury.io/rb/backtracist.svg["Gem Version", link="https://badge.fury.io/rb/backtracist"]
+image:https://badge.fury.io/rb/backtracie.svg["Gem Version", link="https://badge.fury.io/rb/backtracie"]
 
 [discrete]
 == Contents
@@ -18,7 +18,7 @@ Add this line to your application's `gems.rb` or `Gemfile`:
 
 [source,ruby]
 ----
-gem 'backtracist'
+gem 'backtracie'
 ----
 
 And then execute:
@@ -32,7 +32,7 @@ Or install it yourself as:
 
 [source,bash]
 ----
-$ gem install backtracist
+$ gem install backtracie
 ----
 
 This gem is versioned according to http://semver.org/spec/v2.0.0.html[Semantic Versioning].
@@ -55,7 +55,7 @@ Your feedback is welcome!
 
 == Contributing
 
-Bug reports and pull requests are welcome on GitLab at https://github.com/ivoanjo/backtracist.
+Bug reports and pull requests are welcome on GitLab at https://github.com/ivoanjo/backtracie.
 
 This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the http://contributor-covenant.org[Contributor Covenant] code of conduct.
 
@@ -63,4 +63,4 @@ Maintained with ❤️ by https://ivoanjo.me/[Ivo Anjo].
 
 == Code of Conduct
 
-Everyone interacting in the backtracist project’s codebases, issue trackers, chat rooms and mailing lists is expected to follow the link:CODE_OF_CONDUCT.adoc[code of conduct].
+Everyone interacting in the backtracie project’s codebases, issue trackers, chat rooms and mailing lists is expected to follow the link:CODE_OF_CONDUCT.adoc[code of conduct].
