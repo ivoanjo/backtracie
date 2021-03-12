@@ -41,7 +41,7 @@ inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE la
 static bool is_ruby_frame(VALUE ruby_frame);
 static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label);
 static VALUE cfunc_frame_to_location(VALUE frame, VALUE last_ruby_frame, VALUE last_ruby_line);
-static VALUE debug_frame(VALUE frame, VALUE type);
+static VALUE debug_frame(VALUE frame, VALUE type, VALUE correct_label);
 
 // Macros
 
@@ -149,7 +149,7 @@ static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE cor
     rb_profile_frame_label(correct_label),
     last_ruby_line,
     rb_profile_frame_path(frame),
-    debug_frame(frame, rb_str_new2("ruby_frame"))
+    debug_frame(frame, rb_str_new2("ruby_frame"), correct_label)
   );
 }
 
@@ -162,12 +162,12 @@ static VALUE cfunc_frame_to_location(VALUE frame, VALUE last_ruby_frame, VALUE l
     method_name,
     last_ruby_line,
     last_ruby_frame != Qnil ? rb_profile_frame_path(last_ruby_frame) : Qnil,
-    debug_frame(frame, rb_str_new2("cfunc_frame"))
+    debug_frame(frame, rb_str_new2("cfunc_frame"), Qnil)
   );
 }
 
 // Used to dump all the things we get from the rb_profile_frames API, for debugging
-static VALUE debug_frame(VALUE frame, VALUE type) {
+static VALUE debug_frame(VALUE frame, VALUE type, VALUE correct_label) {
   VALUE arguments[] = {
     rb_profile_frame_path(frame),
     rb_profile_frame_absolute_path(frame),
@@ -179,7 +179,8 @@ static VALUE debug_frame(VALUE frame, VALUE type) {
     rb_profile_frame_singleton_method_p(frame),
     rb_profile_frame_method_name(frame),
     rb_profile_frame_qualified_method_name(frame),
-    type
+    type,
+    correct_label != Qnil ? debug_frame(correct_label, Qnil, Qnil) : Qnil,
   };
   return rb_ary_new_from_values(VALUE_COUNT(arguments), arguments);
 }
