@@ -24,6 +24,11 @@ require "mkmf"
 # let's omit it
 $CFLAGS << " " << "-Wno-unused-function"
 
+# On older Rubies, we need to enable a few backports. See cfunc_frames_backport.h for details.
+if RUBY_VERSION < "3"
+  $defs << "-DCFUNC_FRAMES_BACKPORT_NEEDED"
+end
+
 create_header
 
 # The Ruby MJIT header is always (afaik?) suffixed with the exact RUBY version,

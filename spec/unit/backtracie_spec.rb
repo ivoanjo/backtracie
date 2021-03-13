@@ -40,16 +40,12 @@ RSpec.describe Backtracie do
       end
 
       it "has the same base_label as the corresponding Ruby API entry" do
-        pending "FIXME" if RUBY_VERSION < "3"
-
         backtracie_stack.zip(ruby_stack).each do |backtracie_location, kernel_location|
           expect(backtracie_location.base_label).to eq kernel_location.base_label
         end
       end
 
       it "has the same label as the corresponding Ruby API entry" do
-        pending "FIXME" if RUBY_VERSION < "3"
-
         backtracie_stack.zip(ruby_stack).each do |backtracie_location, kernel_location|
           expect(backtracie_location.label).to eq kernel_location.label
         end

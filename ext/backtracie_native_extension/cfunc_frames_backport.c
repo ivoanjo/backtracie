@@ -81,7 +81,7 @@
 #include "extconf.h"
 #include RUBY_MJIT_HEADER
 
-#include "ruby_3.0.0.h"
+#include "cfunc_frames_backport.h"
 
 /**********************************************************************
 
@@ -94,111 +94,80 @@
 
 **********************************************************************/
 
-inline static int
-calc_lineno(const rb_iseq_t *iseq, const VALUE *pc)
+// For more details on the objective of this backport, see the comments on cfunc_frames_backport.h
+
+#ifdef CFUNC_FRAMES_BACKPORT_NEEDED
+
+static const rb_callable_method_entry_t *
+cframe(VALUE frame)
 {
-    VM_ASSERT(iseq);
-    VM_ASSERT(iseq->body);
-    VM_ASSERT(iseq->body->iseq_encoded);
-    VM_ASSERT(iseq->body->iseq_size);
-    if (! pc) {
-        /* This can happen during VM bootup. */
-        VM_ASSERT(iseq->body->type == ISEQ_TYPE_TOP);
-        VM_ASSERT(! iseq->body->local_table);
-        VM_ASSERT(! iseq->body->local_table_size);
-        return 0;
+    if (frame == Qnil) return NULL;
+
+    if (RB_TYPE_P(frame, T_IMEMO)) {
+        switch (imemo_type(frame)) {
+          case imemo_ment:
+            {
+                const rb_callable_method_entry_t *cme = (rb_callable_method_entry_t *)frame;
+                switch (cme->def->type) {
+                  case VM_METHOD_TYPE_CFUNC:
+                    return cme;
+                  default:
+                    return NULL;
+                }
+            }
+          default:
+            return NULL;
+        }
     }
-    else {
-        ptrdiff_t n = pc - iseq->body->iseq_encoded;
-        VM_ASSERT(n <= iseq->body->iseq_size);
-        VM_ASSERT(n >= 0);
-        ASSUME(n >= 0);
-        size_t pos = n; /* no overflow */
-        if (LIKELY(pos)) {
-            /* use pos-1 because PC points next instruction at the beginning of instruction */
-            pos--;
+
+    return NULL;
+}
+
+static VALUE
+id2str(ID id)
+{
+    VALUE str = rb_id2str(id);
+    if (!str) return Qnil;
+    return str;
+}
+#define rb_id2str(id) id2str(id)
+
+static const rb_iseq_t *
+frame2iseq(VALUE frame)
+{
+    if (frame == Qnil) return NULL;
+
+    if (RB_TYPE_P(frame, T_IMEMO)) {
+        switch (imemo_type(frame)) {
+          case imemo_iseq:
+            return (const rb_iseq_t *)frame;
+          case imemo_ment:
+            {
+                const rb_callable_method_entry_t *cme = (rb_callable_method_entry_t *)frame;
+                switch (cme->def->type) {
+                  case VM_METHOD_TYPE_ISEQ:
+                    return cme->def->body.iseq.iseqptr;
+                  default:
+                    return NULL;
+                }
+            }
+          default:
+            break;
         }
-#if VMDEBUG && defined(HAVE_BUILTIN___BUILTIN_TRAP)
-        else {
-            /* SDR() is not possible; that causes infinite loop. */
-            rb_print_backtrace();
-            __builtin_trap();
-        }
+    }
+    rb_bug("frame2iseq: unreachable");
+}
+
+VALUE
+backported_rb_profile_frame_method_name(VALUE frame)
+{
+    const rb_callable_method_entry_t *cme = cframe(frame);
+    if (cme) {
+        ID mid = cme->def->original_id;
+        return id2str(mid);
+    }
+    const rb_iseq_t *iseq = frame2iseq(frame);
+    return iseq ? rb_iseq_method_name(iseq) : Qnil;
+}
+
 #endif
-        return rb_iseq_line_no(iseq, pos);
-    }
-}
-
-static int modified_rb_profile_frames_for_execution_context(
-  rb_execution_context_t *ec,
-  int start,
-  int limit,
-  VALUE *buff,
-  VALUE *correct_labels,
-  int *lines
-) {
-    int i;
-    const rb_control_frame_t *cfp = ec->cfp, *end_cfp = RUBY_VM_END_CONTROL_FRAME(ec);
-    const rb_callable_method_entry_t *cme;
-
-    // Here we go back one frame in addition to what the original Ruby rb_profile_frames method did.
-    // Why? According to backtrace_each() in vm_backtrace.c there's two "dummy frames" (what MRI calls them) at the
-    // bottom of the stack, and we need to skip them both.
-    // I have no idea why the original rb_profile_frames omits this. Without this, sampling `Thread.main` always
-    // returned one more frame than the regular MRI APIs (which use the aforementioned backtrace_each internally).
-    end_cfp = RUBY_VM_NEXT_CONTROL_FRAME(end_cfp);
-
-    for (i=0; i<limit && cfp != end_cfp;) {
-        if (VM_FRAME_RUBYFRAME_P(cfp)) {
-            if (start > 0) {
-                start--;
-                continue;
-            }
-
-            // Stash the iseq so we can use it for the label. Otherwise ./spec/unit/backtracie_spec.rb:53 used to fail with
-            //   expected: "block (3 levels) in fetch_or_store"
-            //   got: "fetch_or_store"
-            // ...but works with this hack.
-            correct_labels[i] = (VALUE) cfp->iseq;
-
-            /* record frame info */
-            cme = rb_vm_frame_method_entry(cfp);
-            if (cme && cme->def->type == VM_METHOD_TYPE_ISEQ) {
-                buff[i] = (VALUE)cme;
-            }
-            else {
-                buff[i] = (VALUE)cfp->iseq;
-            }
-
-            if (lines) lines[i] = calc_lineno(cfp->iseq, cfp->pc);
-
-            i++;
-        }
-        else {
-            cme = rb_vm_frame_method_entry(cfp);
-            if (cme && cme->def->type == VM_METHOD_TYPE_CFUNC) {
-                buff[i] = (VALUE)cme;
-                if (lines) lines[i] = 0;
-                i++;
-            }
-        }
-
-        cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(cfp);
-    }
-
-    return i;
-}
-
-int modified_rb_profile_frames(int start, int limit, VALUE *buff, VALUE *correct_labels, int *lines) {
-  return modified_rb_profile_frames_for_execution_context(GET_EC(), start, limit, buff, correct_labels, lines);
-}
-
-int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, VALUE *correct_labels, int *lines) {
-  // In here we're assuming that what we got is really a Thread or its subclass. This assumption NEEDS to be verified by
-  // the caller, otherwise I see a segfault in your future.
-  rb_thread_t *thread_pointer = (rb_thread_t*) DATA_PTR(thread);
-
-  if (thread_pointer->to_kill || thread_pointer->status == THREAD_KILLED) return Qnil;
-
-  return modified_rb_profile_frames_for_execution_context(thread_pointer->ec, start, limit, buff, correct_labels, lines);
-}

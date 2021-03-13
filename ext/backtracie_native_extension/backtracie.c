@@ -24,6 +24,7 @@
 #include "extconf.h"
 
 #include "ruby_3.0.0.h"
+#include "cfunc_frames_backport.h"
 
 // Constants
 
@@ -150,7 +151,7 @@ static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE cor
 }
 
 static VALUE cfunc_frame_to_location(VALUE frame, VALUE last_ruby_frame, VALUE last_ruby_line) {
-  VALUE method_name = rb_profile_frame_method_name(frame); // Replaces label and base_label in cfuncs
+  VALUE method_name = backtracie_rb_profile_frame_method_name(frame); // Replaces label and base_label in cfuncs
 
   return new_location(
     last_ruby_frame != Qnil ? rb_profile_frame_absolute_path(last_ruby_frame) : Qnil,
@@ -173,7 +174,7 @@ static VALUE debug_frame(VALUE frame, VALUE type, VALUE correct_label) {
     rb_profile_frame_first_lineno(frame),
     rb_profile_frame_classpath(frame),
     rb_profile_frame_singleton_method_p(frame),
-    rb_profile_frame_method_name(frame),
+    backtracie_rb_profile_frame_method_name(frame),
     rb_profile_frame_qualified_method_name(frame),
     type,
     correct_label != Qnil ? debug_frame(correct_label, Qnil, Qnil) : Qnil,
