@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with backtracie.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <stdbool.h>
+
 #include "ruby/ruby.h"
 #include "ruby/debug.h"
 

@@ -25,4 +25,19 @@ require "mkmf"
 $CFLAGS << " " << "-Wno-unused-function"
 
 create_header
+
+# The Ruby MJIT header is always (afaik?) suffixed with the exact RUBY version,
+# including patch (e.g. 2.7.2). Thus, we add to the header file a definition
+# containing the exact file, so that it can be used in a #include in the C code.
+header_contents =
+  File.read($extconf_h)
+    .sub("#endif",
+      <<~EXTCONF_H.strip
+        #define RUBY_MJIT_HEADER "rb_mjit_min_header-#{RUBY_VERSION}.h"
+
+        #endif
+      EXTCONF_H
+    )
+File.open($extconf_h, "w") { |file| file.puts(header_contents) }
+
 create_makefile "backtracie_native_extension"

@@ -8,7 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        ruby: ['3.0'] # Currently only 3.0 is supported
+        ruby: ['3.0', head]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2

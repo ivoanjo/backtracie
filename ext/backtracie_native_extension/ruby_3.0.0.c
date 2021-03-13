@@ -78,7 +78,8 @@
 //    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 //    PURPOSE.
 
-#include "rb_mjit_min_header-3.0.0.h"
+#include "extconf.h"
+#include RUBY_MJIT_HEADER
 
 #include "ruby_3.0.0.h"
 
