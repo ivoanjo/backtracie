@@ -80,7 +80,11 @@ module ContainsRefinement
   module RefinesClassG
     refine ClassG do
       def hello
-        ClassE.instance_method(:hello).bind_call(ClassF.new)
+        if RUBY_VERSION >= "2.7.0"
+          ClassE.instance_method(:hello).bind_call(ClassF.new)
+        else
+          ClassE.instance_method(:hello).bind(ClassF.new).call
+        end
       end
     end
   end

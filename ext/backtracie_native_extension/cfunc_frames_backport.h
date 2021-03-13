@@ -23,7 +23,7 @@
 // https://github.com/ruby/ruby/pull/3299/files
 //
 // The diff is rather trivial, and it makes a world of difference, given how most of Ruby's core classes are written in
-// C, so the methods below are copied from that PR so that we can make use of this functionality on older Ruby versions.
+// C. Thus, the methods below are copied from that PR so that we can make use of this functionality on older Ruby versions.
 
   #ifdef CFUNC_FRAMES_BACKPORT_NEEDED
 		#define backtracie_rb_profile_frame_method_name backported_rb_profile_frame_method_name
