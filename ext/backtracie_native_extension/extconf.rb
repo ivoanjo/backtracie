@@ -18,11 +18,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with backtracie.  If not, see <http://www.gnu.org/licenses/>.
 
-if RUBY_ENGINE == 'jruby'
+if ["jruby", "truffleruby"].include?(RUBY_ENGINE)
   raise \
-    "\n#{'-' * 80}\nSorry! This gem is unsupported on JRuby. Since it relies on a lot of guts of MRI Ruby, " \
+    "\n#{"-" * 80}\nSorry! This gem is unsupported on #{RUBY_ENGINE}. Since it relies on a lot of guts of MRI Ruby, " \
     "it's impossible to make a direct port.\n" \
-    "Perhaps a JRuby equivalent could be created, but it does not yet exist ;)\n#{'-' * 80}"
+    "Perhaps a #{RUBY_ENGINE} equivalent could be created -- help is welcome! :)\n#{"-" * 80}"
 end
 
 require "mkmf"
