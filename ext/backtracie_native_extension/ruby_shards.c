@@ -78,10 +78,34 @@
 //    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 //    PURPOSE.
 
+// -----------------------------------------------------------------------------
+
+// ruby_shards.c contains a number of borrowed functions from the MRI Ruby (usually 3.0.0) source tree:
+// * A few were copy-pasted verbatim, and are dependencies for other functions
+// * A few were copy-pasted and then changed so we can add features and fixes
+// * A few were copy-pasted verbatim, with the objective of backporting their 3.0.0 behavior to earlier Ruby versions
+// `git blame` usually documents which functions were added for what reason.
+
+// Note that since the RUBY_MJIT_HEADER is a very special header, meant for internal use only, it has a number of quirks:
+//
+// 1. I've seen a few segfaults when trying to call back into original Ruby functions. E.g. even if the API is used
+//    correctly, just the mere inclusion of RUBY_MJIT_HEADER causes usage to crash. Thus, as much as possible, it's
+//    better to define functions OUTSIDE this file.
+//
+// 2. On Windows, I've observed "multiple definition of `something...'" (such as `rb_vm_ep_local_ep') whenever there
+//    are multiple files in the codebase that include the RUBY_MJIT_HEADER.
+//    It looks like (some?) Windows versions of Ruby define a bunch of functions in the RUBY_MJIT_HEADER itself
+//    without marking them as "static" (e.g. not visible to the outside of the file), and thus the linker then complains
+//    when linking together several files which all have these non-private symbols.
+//    One possible hacky solution suggested by the internets is to use the "-Wl,-allow-multiple-definition" linker
+//    flags to ignore this problem; instead I've chosen to implement all usage of the RUBY_MJIT_HEADER on this file --
+//    no other file in backtracie shall include RUBY_MJIT_HEADER.
+//    It's a simpler approach, and hopefully avoids any problems.
+
 #include "extconf.h"
 #include RUBY_MJIT_HEADER
 
-#include "ruby_3.0.0.h"
+#include "ruby_shards.h"
 
 /**********************************************************************
 
@@ -129,6 +153,12 @@ calc_lineno(const rb_iseq_t *iseq, const VALUE *pc)
     }
 }
 
+// Hacked version of Ruby's rb_profile_frames from Ruby 3.0.0 with the following changes:
+// 1. Instead of just using the rb_execution_context_t for the current thread, the context is received as an argument,
+//    thus allowing the sampling of any thread in the VM, not just the current one.
+// 2. Also stores the cfp->iseq objects needed to extract correct labels for blocks
+// 3. It correctly ignores the dummy frame at the bottom of the main Ruby thread stack, thus mimicking the behavior of
+//    Ruby's backtrace_each (which is the function that is used to implement Thread#backtrace and friends)
 static int modified_rb_profile_frames_for_execution_context(
   rb_execution_context_t *ec,
   int start,
@@ -202,3 +232,81 @@ int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VA
 
   return modified_rb_profile_frames_for_execution_context(thread_pointer->ec, start, limit, buff, correct_labels, lines);
 }
+
+// For more details on the objective of this backport, see the comments on ruby_shards.h
+// This is used for Ruby < 3.0.0
+#ifdef CFUNC_FRAMES_BACKPORT_NEEDED
+
+static const rb_callable_method_entry_t *
+cframe(VALUE frame)
+{
+    if (frame == Qnil) return NULL;
+
+    if (RB_TYPE_P(frame, T_IMEMO)) {
+        switch (imemo_type(frame)) {
+          case imemo_ment:
+            {
+                const rb_callable_method_entry_t *cme = (rb_callable_method_entry_t *)frame;
+                switch (cme->def->type) {
+                  case VM_METHOD_TYPE_CFUNC:
+                    return cme;
+                  default:
+                    return NULL;
+                }
+            }
+          default:
+            return NULL;
+        }
+    }
+
+    return NULL;
+}
+
+static VALUE
+id2str(ID id)
+{
+    VALUE str = rb_id2str(id);
+    if (!str) return Qnil;
+    return str;
+}
+#define rb_id2str(id) id2str(id)
+
+static const rb_iseq_t *
+frame2iseq(VALUE frame)
+{
+    if (frame == Qnil) return NULL;
+
+    if (RB_TYPE_P(frame, T_IMEMO)) {
+        switch (imemo_type(frame)) {
+          case imemo_iseq:
+            return (const rb_iseq_t *)frame;
+          case imemo_ment:
+            {
+                const rb_callable_method_entry_t *cme = (rb_callable_method_entry_t *)frame;
+                switch (cme->def->type) {
+                  case VM_METHOD_TYPE_ISEQ:
+                    return cme->def->body.iseq.iseqptr;
+                  default:
+                    return NULL;
+                }
+            }
+          default:
+            break;
+        }
+    }
+    rb_bug("frame2iseq: unreachable");
+}
+
+VALUE
+backported_rb_profile_frame_method_name(VALUE frame)
+{
+    const rb_callable_method_entry_t *cme = cframe(frame);
+    if (cme) {
+        ID mid = cme->def->original_id;
+        return id2str(mid);
+    }
+    const rb_iseq_t *iseq = frame2iseq(frame);
+    return iseq ? rb_iseq_method_name(iseq) : Qnil;
+}
+
+#endif

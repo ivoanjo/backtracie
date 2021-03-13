@@ -23,8 +23,7 @@
 
 #include "extconf.h"
 
-#include "ruby_3.0.0.h"
-#include "cfunc_frames_backport.h"
+#include "ruby_shards.h"
 
 // Constants
 
