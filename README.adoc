@@ -4,6 +4,10 @@
 :toclevels: 4
 :toc-title:
 
+A Ruby gem for beautiful backtraces.
+
+Aims to offer alternatives to `Thread#backtrace`, `Thread#backtrace_locations`, `Kernel#caller` and `Kernel#caller_locations` with similar performance, but with better metadata (such as class names).
+
 image:https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg["Contributor Covenant", link="CODE_OF_CONDUCT.adoc"]
 image:https://badge.fury.io/rb/backtracie.svg["Gem Version", link="https://badge.fury.io/rb/backtracie"]
 image:https://github.com/ivoanjo/backtracie/actions/workflows/test.yml/badge.svg["CI Status", link="https://github.com/ivoanjo/backtracie/actions/workflows/test.yml"]
@@ -56,7 +60,7 @@ Your feedback is welcome!
 
 == Contributing
 
-Bug reports and pull requests are welcome on GitLab at https://github.com/ivoanjo/backtracie.
+Bug reports and pull requests are welcome at https://github.com/ivoanjo/backtracie.
 
 This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the http://contributor-covenant.org[Contributor Covenant] code of conduct.
 
@@ -68,7 +72,7 @@ Everyone interacting in the backtracie project’s codebases, issue trackers, ch
 
 == Interesting Links
 
-Here's some gems that are doing similar things to Backtracie:
+Here's some gems that are doing similar things to `backtracie`:
 
 * https://github.com/tmm1/stackprof: A sampling call-stack profiler for Ruby
 * https://github.com/ko1/pretty_backtrace: Pretty your exception backtrace
