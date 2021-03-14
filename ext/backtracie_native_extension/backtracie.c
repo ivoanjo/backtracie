@@ -41,9 +41,9 @@ static VALUE primitive_backtrace_locations(VALUE self, VALUE thread);
 static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_frames);
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE qualified_method_name, VALUE debug);
 static bool is_ruby_frame(VALUE ruby_frame);
-static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label);
+static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label, VALUE correct_block);
 static VALUE cfunc_frame_to_location(VALUE frame, VALUE last_ruby_frame, VALUE last_ruby_line);
-static VALUE debug_frame(VALUE frame, VALUE type, VALUE correct_label);
+static VALUE debug_frame(VALUE frame, VALUE type, VALUE correct_label, VALUE correct_block);
 
 // Macros
 
@@ -69,13 +69,14 @@ static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_fr
   int stack_depth = 0;
   VALUE frames[MAX_STACK_DEPTH];
   VALUE correct_labels[MAX_STACK_DEPTH];
+  VALUE correct_blocks[MAX_STACK_DEPTH];
   int lines[MAX_STACK_DEPTH];
 
   if (thread == Qnil) {
     // Get for own thread
-    stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, frames, correct_labels, lines);
+    stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, frames, correct_labels, correct_blocks, lines);
   } else {
-    stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, frames, correct_labels, lines);
+    stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, frames, correct_labels, correct_blocks, lines);
   }
 
   VALUE locations = rb_ary_new_capa(stack_depth - ignored_stack_top_frames);
@@ -97,7 +98,7 @@ static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_fr
       last_ruby_frame = frame;
       last_ruby_line = INT2FIX(line);
 
-      location = ruby_frame_to_location(frame, last_ruby_line, correct_labels[i]);
+      location = ruby_frame_to_location(frame, last_ruby_line, correct_labels[i], correct_blocks[i]);
     } else {
       location = cfunc_frame_to_location(frame, last_ruby_frame, last_ruby_line);
     }
@@ -138,15 +139,15 @@ static bool is_ruby_frame(VALUE frame) {
     (rb_funcall(absolute_path, rb_intern("=="), 1, rb_str_new2("<cfunc>")) == Qfalse);
 }
 
-static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label) {
+static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label, VALUE correct_block) {
   return new_location(
     rb_profile_frame_absolute_path(frame),
     rb_profile_frame_base_label(frame),
     rb_profile_frame_label(correct_label),
     last_ruby_line,
     rb_profile_frame_path(frame),
-    rb_profile_frame_qualified_method_name(frame),
-    debug_frame(frame, rb_str_new2("ruby_frame"), correct_label)
+    correct_block == Qnil ? rb_profile_frame_qualified_method_name(frame) : rb_profile_frame_classpath(correct_block),
+    debug_frame(frame, rb_str_new2("ruby_frame"), correct_label, correct_block)
   );
 }
 
@@ -160,12 +161,12 @@ static VALUE cfunc_frame_to_location(VALUE frame, VALUE last_ruby_frame, VALUE l
     last_ruby_line,
     last_ruby_frame != Qnil ? rb_profile_frame_path(last_ruby_frame) : Qnil,
     rb_profile_frame_qualified_method_name(frame),
-    debug_frame(frame, rb_str_new2("cfunc_frame"), Qnil)
+    debug_frame(frame, rb_str_new2("cfunc_frame"), Qnil, Qnil)
   );
 }
 
 // Used to dump all the things we get from the rb_profile_frames API, for debugging
-static VALUE debug_frame(VALUE frame, VALUE type, VALUE correct_label) {
+static VALUE debug_frame(VALUE frame, VALUE type, VALUE correct_label, VALUE correct_block) {
   VALUE arguments[] = {
     rb_profile_frame_path(frame),
     rb_profile_frame_absolute_path(frame),
@@ -178,7 +179,8 @@ static VALUE debug_frame(VALUE frame, VALUE type, VALUE correct_label) {
     backtracie_rb_profile_frame_method_name(frame),
     rb_profile_frame_qualified_method_name(frame),
     type,
-    correct_label != Qnil ? debug_frame(correct_label, Qnil, Qnil) : Qnil,
+    correct_label != Qnil ? (frame != correct_label ? debug_frame(correct_label, Qnil, Qnil, Qnil) : rb_str_new2("frame == correct_label")) : Qnil,
+    correct_block != Qnil ? debug_frame(correct_block, Qnil, Qnil, Qnil) : Qnil,
   };
   return rb_ary_new_from_values(VALUE_COUNT(arguments), arguments);
 }

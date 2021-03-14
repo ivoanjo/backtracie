@@ -117,6 +117,34 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
     end
 
+    context "when sampling a method defined using define_method" do
+      class ClassWithMethodDefinedUsingDefinedMethod
+        define_method(:test_method) do |&block|
+          block.call
+        end
+      end
+
+      let(:test_object) { ClassWithMethodDefinedUsingDefinedMethod.new }
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_object.test_method { described_class.backtrace_locations(Thread.current) }, test_object.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it "includes the class name in the qualified_method_name of a test_method call frame" do
+        expect(backtracie_stack[2].qualified_method_name).to start_with(ClassWithMethodDefinedUsingDefinedMethod.name)
+      end
+
+      it "includes the method name in the qualified_method_name of a test_method call frame" do
+        pending "TODO: Work in progress"
+
+        expect(backtracie_stack[2].qualified_method_name).to end_with("test_method")
+      end
+    end
+
     context "when first argument is not a thread" do
       it do
         expect { described_class.backtrace_locations(:foo) }.to raise_exception(ArgumentError)

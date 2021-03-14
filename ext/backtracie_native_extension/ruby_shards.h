@@ -19,8 +19,8 @@
 #ifndef RUBY_SHARDS_H
 #define RUBY_SHARDS_H
 
-int modified_rb_profile_frames(int start, int limit, VALUE *buff, VALUE *correct_labels, int *lines);
-int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, VALUE *correct_labels, int *lines);
+int modified_rb_profile_frames(int start, int limit, VALUE *buff, VALUE *correct_labels, VALUE *correct_blocks, int *lines);
+int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, VALUE *correct_labels, VALUE *correct_blocks, int *lines);
 
 // -----------------------------------------------------------------------------
 

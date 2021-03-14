@@ -159,19 +159,21 @@ calc_lineno(const rb_iseq_t *iseq, const VALUE *pc)
 // 2. Also stores the cfp->iseq objects needed to extract correct labels for blocks
 // 3. It correctly ignores the dummy frame at the bottom of the main Ruby thread stack, thus mimicking the behavior of
 //    Ruby's backtrace_each (which is the function that is used to implement Thread#backtrace and friends)
+// 4. Also stores the extra rb_vm_frame_method_entry object needed to get the correct classpath for some blocks.
 static int modified_rb_profile_frames_for_execution_context(
-  rb_execution_context_t *ec,
+  rb_execution_context_t *ec, // Hack #1 above
   int start,
   int limit,
   VALUE *buff,
-  VALUE *correct_labels,
+  VALUE *correct_labels, // Hack #2 above
+  VALUE *correct_blocks, // Hack #4 above
   int *lines
 ) {
     int i;
     const rb_control_frame_t *cfp = ec->cfp, *end_cfp = RUBY_VM_END_CONTROL_FRAME(ec);
     const rb_callable_method_entry_t *cme;
 
-    // Here we go back one frame in addition to what the original Ruby rb_profile_frames method did.
+    // Hack #2 above: Here we go back one frame in addition to what the original Ruby rb_profile_frames method did.
     // Why? According to backtrace_each() in vm_backtrace.c there's two "dummy frames" (what MRI calls them) at the
     // bottom of the stack, and we need to skip them both.
     // I have no idea why the original rb_profile_frames omits this. Without this, sampling `Thread.main` always
@@ -185,11 +187,15 @@ static int modified_rb_profile_frames_for_execution_context(
                 continue;
             }
 
-            // Stash the iseq so we can use it for the label. Otherwise ./spec/unit/backtracie_spec.rb:53 used to fail with
+            // Hack #3 above: Stash the iseq so we can use it for the label.
+            // Otherwise ./spec/unit/backtracie_spec.rb:53 used to fail with
             //   expected: "block (3 levels) in fetch_or_store"
             //   got: "fetch_or_store"
             // ...but works with this hack.
             correct_labels[i] = (VALUE) cfp->iseq;
+
+            // Correctly initialize these
+            correct_blocks[i] = Qnil;
 
             /* record frame info */
             cme = rb_vm_frame_method_entry(cfp);
@@ -197,6 +203,13 @@ static int modified_rb_profile_frames_for_execution_context(
                 buff[i] = (VALUE)cme;
             }
             else {
+                // Hack #4 above: For some blocks, this object contains the correct full classpath that we
+                // cannot otherwise get.
+                // FIXME: Having yet another array for this is quite inefficient :(
+                if (cme && cme->def->type == VM_METHOD_TYPE_BMETHOD) {
+                  correct_blocks[i] = (VALUE)cme;
+                }
+
                 buff[i] = (VALUE)cfp->iseq;
             }
 
@@ -219,18 +232,18 @@ static int modified_rb_profile_frames_for_execution_context(
     return i;
 }
 
-int modified_rb_profile_frames(int start, int limit, VALUE *buff, VALUE *correct_labels, int *lines) {
-  return modified_rb_profile_frames_for_execution_context(GET_EC(), start, limit, buff, correct_labels, lines);
+int modified_rb_profile_frames(int start, int limit, VALUE *buff, VALUE *correct_labels, VALUE *correct_blocks, int *lines) {
+  return modified_rb_profile_frames_for_execution_context(GET_EC(), start, limit, buff, correct_labels, correct_blocks, lines);
 }
 
-int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, VALUE *correct_labels, int *lines) {
+int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, VALUE *correct_labels, VALUE *correct_blocks, int *lines) {
   // In here we're assuming that what we got is really a Thread or its subclass. This assumption NEEDS to be verified by
   // the caller, otherwise I see a segfault in your future.
   rb_thread_t *thread_pointer = (rb_thread_t*) DATA_PTR(thread);
 
   if (thread_pointer->to_kill || thread_pointer->status == THREAD_KILLED) return Qnil;
 
-  return modified_rb_profile_frames_for_execution_context(thread_pointer->ec, start, limit, buff, correct_labels, lines);
+  return modified_rb_profile_frames_for_execution_context(thread_pointer->ec, start, limit, buff, correct_labels, correct_blocks, lines);
 }
 
 // For more details on the objective of this backport, see the comments on ruby_shards.h

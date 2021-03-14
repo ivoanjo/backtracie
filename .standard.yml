@@ -12,3 +12,4 @@ ignore:
     - Style/GlobalVars
   - 'spec/unit/backtracie_spec.rb':
     - Style/EvalWithLocation
+    - Lint/ConstantDefinitionInBlock
