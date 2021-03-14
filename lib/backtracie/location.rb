@@ -26,15 +26,17 @@ module Backtracie
     attr_accessor :label
     attr_accessor :lineno
     attr_accessor :path
+    attr_accessor :qualified_method_name
 
     # Note: The order of arguments is hardcoded in the native extension in the `new_location` function --
     # keep them in sync
-    def initialize(absolute_path, base_label, label, lineno, path, debug)
+    def initialize(absolute_path, base_label, label, lineno, path, qualified_method_name, debug)
       @absolute_path = absolute_path
       @base_label = base_label
       @label = label
       @lineno = lineno
       @path = path
+      @qualified_method_name = qualified_method_name
       @debug = debug
 
       freeze

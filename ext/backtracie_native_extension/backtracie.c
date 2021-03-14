@@ -39,7 +39,7 @@ static VALUE backtracie_location_class = Qnil;
 static VALUE primitive_caller_locations(VALUE self);
 static VALUE primitive_backtrace_locations(VALUE self, VALUE thread);
 static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_frames);
-inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE debug);
+inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE qualified_method_name, VALUE debug);
 static bool is_ruby_frame(VALUE ruby_frame);
 static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label);
 static VALUE cfunc_frame_to_location(VALUE frame, VALUE last_ruby_frame, VALUE last_ruby_line);
@@ -126,8 +126,8 @@ static VALUE primitive_backtrace_locations(VALUE self, VALUE thread) {
   return caller_locations(self, thread, ignored_stack_top_frames);
 }
 
-inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE debug) {
-  VALUE arguments[] = { absolute_path, base_label, label, lineno, path, debug };
+inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE qualified_method_name, VALUE debug) {
+  VALUE arguments[] = { absolute_path, base_label, label, lineno, path, qualified_method_name, debug };
   return rb_class_new_instance(VALUE_COUNT(arguments), arguments, backtracie_location_class);
 }
 
@@ -145,6 +145,7 @@ static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE cor
     rb_profile_frame_label(correct_label),
     last_ruby_line,
     rb_profile_frame_path(frame),
+    rb_profile_frame_qualified_method_name(frame),
     debug_frame(frame, rb_str_new2("ruby_frame"), correct_label)
   );
 }
@@ -158,6 +159,7 @@ static VALUE cfunc_frame_to_location(VALUE frame, VALUE last_ruby_frame, VALUE l
     method_name,
     last_ruby_line,
     last_ruby_frame != Qnil ? rb_profile_frame_path(last_ruby_frame) : Qnil,
+    rb_profile_frame_qualified_method_name(frame),
     debug_frame(frame, rb_str_new2("cfunc_frame"), Qnil)
   );
 }
