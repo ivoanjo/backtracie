@@ -13,3 +13,5 @@ ignore:
   - 'spec/unit/backtracie_spec.rb':
     - Style/EvalWithLocation
     - Lint/ConstantDefinitionInBlock
+  - 'spec/unit/better_backtrace_helper.rb':
+    - Style/YodaCondition
