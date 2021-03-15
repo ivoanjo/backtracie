@@ -16,11 +16,112 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with backtracie.  If not, see <http://www.gnu.org/licenses/>.
 
+// -----------------------------------------------------------------------------
+// The file below has modified versions of code extracted from the Ruby project.
+// The Ruby project copyright and license follow:
+// -----------------------------------------------------------------------------
+
+// Ruby is copyrighted free software by Yukihiro Matsumoto <matz@netlab.jp>.
+// You can redistribute it and/or modify it under either the terms of the
+// 2-clause BSDL (see the file BSDL), or the conditions below:
+
+// 1. You may make and give away verbatim copies of the source form of the
+//    software without restriction, provided that you duplicate all of the
+//    original copyright notices and associated disclaimers.
+
+// 2. You may modify your copy of the software in any way, provided that
+//    you do at least ONE of the following:
+
+//    a. place your modifications in the Public Domain or otherwise
+//       make them Freely Available, such as by posting said
+//       modifications to Usenet or an equivalent medium, or by allowing
+//       the author to include your modifications in the software.
+
+//    b. use the modified software only within your corporation or
+//       organization.
+
+//    c. give non-standard binaries non-standard names, with
+//       instructions on where to get the original software distribution.
+
+//    d. make other distribution arrangements with the author.
+
+// 3. You may distribute the software in object code or binary form,
+//    provided that you do at least ONE of the following:
+
+//    a. distribute the binaries and library files of the software,
+//       together with instructions (in the manual page or equivalent)
+//       on where to get the original distribution.
+
+//    b. accompany the distribution with the machine-readable source of
+//       the software.
+
+//    c. give non-standard binaries non-standard names, with
+//       instructions on where to get the original software distribution.
+
+//    d. make other distribution arrangements with the author.
+
+// 4. You may modify and include the part of the software into any other
+//    software (possibly commercial).  But some files in the distribution
+//    are not written by the author, so that they are not under these terms.
+
+//    For the list of those files and their copying conditions, see the
+//    file LEGAL.
+
+// 5. The scripts and library files supplied as input to or produced as
+//    output from the software do not automatically fall under the
+//    copyright of the software, but belong to whomever generated them,
+//    and may be sold commercially, and may be aggregated with this
+//    software.
+
+// 6. THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR
+//    IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+//    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+//    PURPOSE.
+
 #ifndef RUBY_SHARDS_H
 #define RUBY_SHARDS_H
 
-int modified_rb_profile_frames(int start, int limit, VALUE *buff, VALUE *correct_labels, VALUE *correct_blocks, int *lines);
-int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, VALUE *buff, VALUE *correct_labels, VALUE *correct_blocks, int *lines);
+// -----------------------------------------------------------------------------
+
+/**********************************************************************
+  method.h -
+  created at: Wed Jul 15 20:02:33 2009
+  Copyright (C) 2009 Koichi Sasada
+**********************************************************************/
+
+  #ifndef RUBY_MJIT_HEADER_INCLUDED
+    typedef enum {
+      VM_METHOD_TYPE_ISEQ,      /*!< Ruby method */
+      VM_METHOD_TYPE_CFUNC,     /*!< C method */
+      VM_METHOD_TYPE_ATTRSET,   /*!< attr_writer or attr_accessor */
+      VM_METHOD_TYPE_IVAR,      /*!< attr_reader or attr_accessor */
+      VM_METHOD_TYPE_BMETHOD,
+      VM_METHOD_TYPE_ZSUPER,
+      VM_METHOD_TYPE_ALIAS,
+      VM_METHOD_TYPE_UNDEF,
+      VM_METHOD_TYPE_NOTIMPLEMENTED,
+      VM_METHOD_TYPE_OPTIMIZED, /*!< Kernel#send, Proc#call, etc */
+      VM_METHOD_TYPE_MISSING,   /*!< wrapper for method_missing(id) */
+      VM_METHOD_TYPE_REFINED,   /*!< refinement */
+    } rb_method_type_t;
+    #define VM_METHOD_TYPE_MINIMUM_BITS 4
+  #endif
+
+// -----------------------------------------------------------------------------
+
+typedef struct {
+  unsigned int is_ruby_frame : 1; // 1 -> ruby frame / 0 -> cfunc frame
+  unsigned int should_use_iseq : 1;
+    // for ruby frames where the callable_method_entry is not of type VM_METHOD_TYPE_ISEQ, most of the metadata we
+    // want can be found by querying the iseq, and there may not even be an callable_method_entry
+  rb_method_type_t vm_method_type : VM_METHOD_TYPE_MINIMUM_BITS;
+  int line_number;
+  VALUE iseq;
+  VALUE callable_method_entry;
+} raw_location;
+
+int modified_rb_profile_frames(int start, int limit, raw_location *raw_locations);
+int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, raw_location *raw_locations);
 
 // -----------------------------------------------------------------------------
 

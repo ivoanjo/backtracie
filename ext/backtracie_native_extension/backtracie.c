@@ -67,16 +67,13 @@ void Init_backtracie_native_extension(void) {
 // Get array of Backtracie::Locations for a given thread; if thread is nil, returns for the current thread
 static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_frames) {
   int stack_depth = 0;
-  VALUE frames[MAX_STACK_DEPTH];
-  VALUE correct_labels[MAX_STACK_DEPTH];
-  VALUE correct_blocks[MAX_STACK_DEPTH];
-  int lines[MAX_STACK_DEPTH];
+  raw_location raw_locations[MAX_STACK_DEPTH];
 
   if (thread == Qnil) {
     // Get for own thread
-    stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, frames, correct_labels, correct_blocks, lines);
+    stack_depth = modified_rb_profile_frames(0, MAX_STACK_DEPTH, raw_locations);
   } else {
-    stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, frames, correct_labels, correct_blocks, lines);
+    stack_depth = modified_rb_profile_frames_for_thread(thread, 0, MAX_STACK_DEPTH, raw_locations);
   }
 
   VALUE locations = rb_ary_new_capa(stack_depth - ignored_stack_top_frames);
@@ -89,16 +86,21 @@ static VALUE caller_locations(VALUE self, VALUE thread, int ignored_stack_top_fr
   VALUE last_ruby_line = Qnil;
 
   for (int i = stack_depth - 1; i >= ignored_stack_top_frames; i--) {
-    VALUE frame = frames[i];
-    int line = lines[i];
+    VALUE frame = raw_locations[i].should_use_iseq ? raw_locations[i].iseq : raw_locations[i].callable_method_entry;
+    int line = raw_locations[i].line_number;
 
     VALUE location = Qnil;
 
-    if (is_ruby_frame(frame)) {
+    if (raw_locations[i].is_ruby_frame) {
       last_ruby_frame = frame;
       last_ruby_line = INT2FIX(line);
 
-      location = ruby_frame_to_location(frame, last_ruby_line, correct_labels[i], correct_blocks[i]);
+      location = ruby_frame_to_location(
+        frame,
+        last_ruby_line,
+        raw_locations[i].iseq,
+        raw_locations[i].vm_method_type == VM_METHOD_TYPE_BMETHOD ? raw_locations[i].callable_method_entry : Qnil
+      );
     } else {
       location = cfunc_frame_to_location(frame, last_ruby_frame, last_ruby_line);
     }
@@ -130,13 +132,6 @@ static VALUE primitive_backtrace_locations(VALUE self, VALUE thread) {
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE qualified_method_name, VALUE debug) {
   VALUE arguments[] = { absolute_path, base_label, label, lineno, path, qualified_method_name, debug };
   return rb_class_new_instance(VALUE_COUNT(arguments), arguments, backtracie_location_class);
-}
-
-static bool is_ruby_frame(VALUE frame) {
-  VALUE absolute_path = rb_profile_frame_absolute_path(frame);
-
-  return (rb_profile_frame_path(frame) != Qnil || absolute_path != Qnil) &&
-    (rb_funcall(absolute_path, rb_intern("=="), 1, rb_str_new2("<cfunc>")) == Qfalse);
 }
 
 static VALUE ruby_frame_to_location(VALUE frame, VALUE last_ruby_line, VALUE correct_label, VALUE correct_block) {
