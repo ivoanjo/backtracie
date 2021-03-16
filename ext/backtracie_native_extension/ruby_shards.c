@@ -231,6 +231,15 @@ int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_locatio
   return backtracie_rb_profile_frames_for_execution_context(thread_pointer->ec, limit, raw_locations);
 }
 
+VALUE backtracie_called_id(raw_location *the_location) {
+  if (the_location->callable_method_entry == Qnil) return Qnil;
+
+  return ID2SYM(
+    ((rb_callable_method_entry_t *) the_location->callable_method_entry)
+      ->called_id
+  );
+}
+
 // For more details on the objective of this backport, see the comments on ruby_shards.h
 // This is used for Ruby < 3.0.0
 #ifdef CFUNC_FRAMES_BACKPORT_NEEDED
