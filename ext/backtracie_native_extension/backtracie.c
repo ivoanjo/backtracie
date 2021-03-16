@@ -40,6 +40,7 @@ inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE la
 static VALUE ruby_frame_to_location(raw_location *the_location);
 static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *last_ruby_location);
 static VALUE frame_from_location(raw_location *the_location);
+static VALUE qualified_method_name_for_block(raw_location *the_location);
 static VALUE debug_raw_location(raw_location *the_location);
 static VALUE debug_frame(VALUE frame);
 
@@ -136,7 +137,7 @@ static VALUE ruby_frame_to_location(raw_location *the_location) {
     INT2FIX(the_location->line_number),
     rb_profile_frame_path(frame),
     the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD ?
-      rb_profile_frame_classpath(the_location->callable_method_entry) :
+      qualified_method_name_for_block(the_location) :
       rb_profile_frame_qualified_method_name(frame),
     debug_raw_location(the_location)
   );
@@ -162,6 +163,19 @@ static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *l
 
 static VALUE frame_from_location(raw_location *the_location) {
   return the_location->should_use_iseq ? the_location->iseq : the_location->callable_method_entry;
+}
+
+static VALUE qualified_method_name_for_block(raw_location *the_location) {
+  VALUE class_name = rb_profile_frame_classpath(the_location->callable_method_entry);
+  VALUE method_name = backtracie_called_id(the_location);
+  VALUE is_singleton_method = rb_profile_frame_singleton_method_p(the_location->iseq);
+
+  VALUE name = rb_str_new2("");
+  rb_str_concat(name, class_name);
+  rb_str_concat(name, is_singleton_method ? rb_str_new2(".") : rb_str_new2("#"));
+  rb_str_concat(name, rb_sym2str(method_name));
+
+  return name;
 }
 
 static VALUE debug_raw_location(raw_location *the_location) {

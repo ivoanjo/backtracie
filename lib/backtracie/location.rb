@@ -49,5 +49,14 @@ module Backtracie
         "#{@path}:in `#{@label}'"
       end
     end
+
+    # Still WIP
+    def fancy_to_s
+      if @lineno != 0
+        "#{@path}:#{@lineno}:in #{@qualified_method_name}"
+      else
+        "#{@path}:in #{@qualified_method_name}"
+      end
+    end
   end
 end

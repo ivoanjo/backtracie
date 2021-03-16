@@ -139,8 +139,6 @@ RSpec.describe Backtracie do
       end
 
       it "includes the method name in the qualified_method_name of a test_method call frame" do
-        pending "TODO: Work in progress"
-
         expect(backtracie_stack[2].qualified_method_name).to end_with("test_method")
       end
     end
