@@ -141,13 +141,6 @@ calc_lineno(const rb_iseq_t *iseq, const VALUE *pc)
             /* use pos-1 because PC points next instruction at the beginning of instruction */
             pos--;
         }
-#if VMDEBUG && defined(HAVE_BUILTIN___BUILTIN_TRAP)
-        else {
-            /* SDR() is not possible; that causes infinite loop. */
-            rb_print_backtrace();
-            __builtin_trap();
-        }
-#endif
         return rb_iseq_line_no(iseq, pos);
     }
 }
@@ -156,91 +149,86 @@ calc_lineno(const rb_iseq_t *iseq, const VALUE *pc)
 // 1. Instead of just using the rb_execution_context_t for the current thread, the context is received as an argument,
 //    thus allowing the sampling of any thread in the VM, not just the current one.
 // 2. It gathers a lot more data: originally you'd get only a VALUE (either iseq or the cme, depending on the case),
-//    and the line number. The hacked version returns a whole `raw_location` with a lot more info.
+//    and the line number. The hacked version returns a whole raw_location with a lot more info.
 // 3. It correctly ignores the dummy frame at the bottom of the main Ruby thread stack, thus mimicking the behavior of
 //    Ruby's backtrace_each (which is the function that is used to implement Thread#backtrace and friends)
-static int modified_rb_profile_frames_for_execution_context(
+// 4. Removed the start argument (upstream was broken anyway -- https://github.com/ruby/ruby/pull/2713 -- so we can
+//    re-add later if needed)
+static int backtracie_rb_profile_frames_for_execution_context(
   rb_execution_context_t *ec,
-  int start,
   int limit,
   raw_location *raw_locations
 ) {
-    int i;
-    const rb_control_frame_t *cfp = ec->cfp, *end_cfp = RUBY_VM_END_CONTROL_FRAME(ec);
-    const rb_callable_method_entry_t *cme;
+  int i = 0;
+  const rb_control_frame_t *cfp = ec->cfp;
+  const rb_control_frame_t *end_cfp = RUBY_VM_END_CONTROL_FRAME(ec);
+  const rb_callable_method_entry_t *cme = 0;
 
-    // Hack #3 above: Here we go back one frame in addition to what the original Ruby rb_profile_frames method did.
-    // Why? According to backtrace_each() in vm_backtrace.c there's two "dummy frames" (what MRI calls them) at the
-    // bottom of the stack, and we need to skip them both.
-    // I have no idea why the original rb_profile_frames omits this. Without this, sampling `Thread.main` always
-    // returned one more frame than the regular MRI APIs (which use the aforementioned backtrace_each internally).
-    end_cfp = RUBY_VM_NEXT_CONTROL_FRAME(end_cfp);
+  // Hack #3 above: Here we go back one frame in addition to what the original Ruby rb_profile_frames method did.
+  // Why? According to backtrace_each() in vm_backtrace.c there's two "dummy frames" (what MRI calls them) at the
+  // bottom of the stack, and we need to skip them both.
+  // I have no idea why the original rb_profile_frames omits this. Without this, sampling `Thread.main` always
+  // returned one more frame than the regular MRI APIs (which use the aforementioned backtrace_each internally).
+  end_cfp = RUBY_VM_NEXT_CONTROL_FRAME(end_cfp);
 
-    for (i=0; i<limit && cfp != end_cfp;) {
-        // Initialize the raw_location, to avoid issues
+  for (i = 0; i < limit && cfp != end_cfp;) {
+    // Initialize the raw_location, to avoid issues
+    raw_locations[i].is_ruby_frame = false;
+    raw_locations[i].should_use_iseq = false;
+    raw_locations[i].vm_method_type = 0;
+    raw_locations[i].line_number = 0;
+    raw_locations[i].iseq = Qnil;
+    raw_locations[i].callable_method_entry = Qnil;
+
+    cme = rb_vm_frame_method_entry(cfp);
+
+    if (VM_FRAME_RUBYFRAME_P(cfp)) {
+      raw_locations[i].is_ruby_frame = true;
+      raw_locations[i].iseq = (VALUE) cfp->iseq;
+
+      if (cme) {
+        raw_locations[i].callable_method_entry = (VALUE) cme;
+        raw_locations[i].vm_method_type = cme->def->type;
+      }
+
+      if (!(cme && cme->def->type == VM_METHOD_TYPE_ISEQ)) {
+        // This comes from the original rb_profile_frames logic, which would only return the iseq when the cme
+        // type is not VM_METHOD_TYPE_ISEQ
+        raw_locations[i].should_use_iseq = true;
+      }
+
+      raw_locations[i].line_number = calc_lineno(cfp->iseq, cfp->pc);
+
+      i++;
+    } else {
+      if (cme && cme->def->type == VM_METHOD_TYPE_CFUNC) {
         raw_locations[i].is_ruby_frame = false;
-        raw_locations[i].should_use_iseq = false;
-        raw_locations[i].vm_method_type = 0;
+        raw_locations[i].callable_method_entry = (VALUE) cme;
+        raw_locations[i].vm_method_type = cme->def->type;
         raw_locations[i].line_number = 0;
-        raw_locations[i].iseq = Qnil;
-        raw_locations[i].callable_method_entry = Qnil;
 
-        if (VM_FRAME_RUBYFRAME_P(cfp)) {
-            // FIXME: start is mega broken; see https://github.com/ruby/ruby/pull/2713 for details
-            if (start > 0) {
-                start--;
-                continue;
-            }
-
-            raw_locations[i].is_ruby_frame = true;
-            raw_locations[i].iseq = (VALUE) cfp->iseq;
-
-            cme = rb_vm_frame_method_entry(cfp);
-
-            if (cme) {
-              raw_locations[i].callable_method_entry = (VALUE) cme;
-              raw_locations[i].vm_method_type = cme->def->type;
-            }
-
-            if (!(cme && cme->def->type == VM_METHOD_TYPE_ISEQ)) {
-              // This comes from the original rb_profile_frames logic, which would only return the iseq when the cme
-              // type is not VM_METHOD_TYPE_ISEQ
-              raw_locations[i].should_use_iseq = true;
-            }
-
-            raw_locations[i].line_number = calc_lineno(cfp->iseq, cfp->pc);
-
-            i++;
-        }
-        else {
-            cme = rb_vm_frame_method_entry(cfp);
-            if (cme && cme->def->type == VM_METHOD_TYPE_CFUNC) {
-                raw_locations[i].is_ruby_frame = false;
-                raw_locations[i].callable_method_entry = (VALUE) cme;
-                raw_locations[i].vm_method_type = cme->def->type;
-                raw_locations[i].line_number = 0;
-                i++;
-            }
-        }
-
-        cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(cfp);
+        i++;
+      }
     }
 
-    return i;
+    cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(cfp);
+  }
+
+  return i;
 }
 
-int modified_rb_profile_frames(int start, int limit, raw_location *raw_locations) {
-  return modified_rb_profile_frames_for_execution_context(GET_EC(), start, limit, raw_locations);
+int backtracie_rb_profile_frames(int limit, raw_location *raw_locations) {
+  return backtracie_rb_profile_frames_for_execution_context(GET_EC(), limit, raw_locations);
 }
 
-int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, raw_location *raw_locations) {
+int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_location *raw_locations) {
   // In here we're assuming that what we got is really a Thread or its subclass. This assumption NEEDS to be verified by
   // the caller, otherwise I see a segfault in your future.
   rb_thread_t *thread_pointer = (rb_thread_t*) DATA_PTR(thread);
 
   if (thread_pointer->to_kill || thread_pointer->status == THREAD_KILLED) return Qnil;
 
-  return modified_rb_profile_frames_for_execution_context(thread_pointer->ec, start, limit, raw_locations);
+  return backtracie_rb_profile_frames_for_execution_context(thread_pointer->ec, limit, raw_locations);
 }
 
 // For more details on the objective of this backport, see the comments on ruby_shards.h

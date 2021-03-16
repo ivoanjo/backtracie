@@ -111,31 +111,33 @@
 
 typedef struct {
   unsigned int is_ruby_frame : 1; // 1 -> ruby frame / 0 -> cfunc frame
+
+  // for ruby frames where the callable_method_entry is not of type VM_METHOD_TYPE_ISEQ, most of the metadata we
+  // want can be found by querying the iseq, and there may not even be an callable_method_entry
   unsigned int should_use_iseq : 1;
-    // for ruby frames where the callable_method_entry is not of type VM_METHOD_TYPE_ISEQ, most of the metadata we
-    // want can be found by querying the iseq, and there may not even be an callable_method_entry
+
   rb_method_type_t vm_method_type : VM_METHOD_TYPE_MINIMUM_BITS;
   int line_number;
   VALUE iseq;
   VALUE callable_method_entry;
 } raw_location;
 
-int modified_rb_profile_frames(int start, int limit, raw_location *raw_locations);
-int modified_rb_profile_frames_for_thread(VALUE thread, int start, int limit, raw_location *raw_locations);
+int backtracie_rb_profile_frames(int limit, raw_location *raw_locations);
+int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_location *raw_locations);
 
 // -----------------------------------------------------------------------------
 
-// Ruby 3.0 finally added support for showing "cfunc frames" (frames for methods written in C) in stack traces:
-// https://github.com/ruby/ruby/pull/3299/files
-//
-// The diff is rather trivial, and it makes a world of difference, given how most of Ruby's core classes are written in C.
-// Thus, the methods below are copied from that PR so that we can make use of this functionality on older Ruby versions.
-#ifdef CFUNC_FRAMES_BACKPORT_NEEDED
-  #define backtracie_rb_profile_frame_method_name backported_rb_profile_frame_method_name
+  // Ruby 3.0 finally added support for showing "cfunc frames" (frames for methods written in C) in stack traces:
+  // https://github.com/ruby/ruby/pull/3299/files
+  //
+  // The diff is rather trivial, and it makes a world of difference, given how most of Ruby's core classes are written in C.
+  // Thus, the methods below are copied from that PR so that we can make use of this functionality on older Ruby versions.
+  #ifdef CFUNC_FRAMES_BACKPORT_NEEDED
+    #define backtracie_rb_profile_frame_method_name backported_rb_profile_frame_method_name
 
-  VALUE backported_rb_profile_frame_method_name(VALUE frame);
-#else // Ruby > 3.0, just use the stock functionality
-  #define backtracie_rb_profile_frame_method_name rb_profile_frame_method_name
-#endif
+    VALUE backported_rb_profile_frame_method_name(VALUE frame);
+  #else // Ruby > 3.0, just use the stock functionality
+    #define backtracie_rb_profile_frame_method_name rb_profile_frame_method_name
+  #endif
 
 #endif
