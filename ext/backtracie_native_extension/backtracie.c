@@ -29,7 +29,9 @@
 
 #define VALUE_COUNT(array) (sizeof(array) / sizeof(VALUE))
 
+static VALUE main_object_instance = Qnil;
 static ID ensure_object_is_thread_id;
+static ID to_s_id;
 static VALUE backtracie_module = Qnil;
 static VALUE backtracie_location_class = Qnil;
 
@@ -41,11 +43,16 @@ static VALUE ruby_frame_to_location(raw_location *the_location);
 static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *last_ruby_location);
 static VALUE frame_from_location(raw_location *the_location);
 static VALUE qualified_method_name_for_block(raw_location *the_location);
+static VALUE qualified_method_name_from_self(raw_location *the_location);
+static bool is_self_class_singleton(raw_location *the_location);
 static VALUE debug_raw_location(raw_location *the_location);
 static VALUE debug_frame(VALUE frame);
+static inline VALUE to_boolean(int value) ;
 
 void Init_backtracie_native_extension(void) {
+  main_object_instance = backtracie_rb_vm_top_self();
   ensure_object_is_thread_id = rb_intern("ensure_object_is_thread");
+  to_s_id = rb_intern("to_s");
 
   backtracie_module = rb_const_get(rb_cObject, rb_intern("Backtracie"));
   rb_global_variable(&backtracie_module);
@@ -130,15 +137,24 @@ inline static VALUE new_location(
 static VALUE ruby_frame_to_location(raw_location *the_location) {
   VALUE frame = frame_from_location(the_location);
 
+  VALUE qualified_method_name = Qnil;
+
+  if (the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD) {
+    qualified_method_name = qualified_method_name_for_block(the_location);
+  } else {
+    qualified_method_name = rb_profile_frame_qualified_method_name(frame);
+    if (qualified_method_name == Qnil) {
+      qualified_method_name = qualified_method_name_from_self(the_location);
+    }
+  }
+
   return new_location(
     rb_profile_frame_absolute_path(frame),
     rb_profile_frame_base_label(frame),
     rb_profile_frame_label(the_location->iseq),
     INT2FIX(the_location->line_number),
     rb_profile_frame_path(frame),
-    the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD ?
-      qualified_method_name_for_block(the_location) :
-      rb_profile_frame_qualified_method_name(frame),
+    qualified_method_name,
     debug_raw_location(the_location)
   );
 }
@@ -178,14 +194,49 @@ static VALUE qualified_method_name_for_block(raw_location *the_location) {
   return name;
 }
 
+static VALUE qualified_method_name_from_self(raw_location *the_location) {
+  if (the_location->self == Qnil) return Qnil;
+
+  VALUE self_class = RBASIC_CLASS(the_location->self);
+  bool is_self_class_singleton = FL_TEST(self_class, FL_SINGLETON);
+
+  VALUE name = rb_str_new2("");
+  if (is_self_class_singleton) {
+    if (the_location->self == main_object_instance) {
+      rb_str_concat(name, rb_str_new2("Object$<main>#"));
+    } else {
+      VALUE the_class = RCLASS_SUPER(self_class);
+      rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
+      rb_str_concat(name, rb_str_new2("$singleton#"));
+    }
+  } else {
+    // Not very sure if this branch of the if is ever reached, and if it would be for a instance or static call, so
+    // let's just have these defaults and revisit as needed
+    rb_str_concat(name, rb_funcall(self_class, to_s_id, 0));
+    rb_str_concat(name, rb_str_new2("#"));
+  }
+
+  if (backtracie_iseq_is_block(the_location)) {
+    rb_str_concat(name, rb_str_new2("{block}"));
+  }
+
+  return name;
+}
+
+static bool is_self_class_singleton(raw_location *the_location) {
+  return the_location->self != Qnil && FL_TEST(rb_class_of(the_location->self), FL_SINGLETON);
+}
+
 static VALUE debug_raw_location(raw_location *the_location) {
   VALUE arguments[] = {
-    ID2SYM(rb_intern("is_ruby_frame")),         /* => */ the_location->is_ruby_frame ? Qtrue : Qfalse,
-    ID2SYM(rb_intern("should_use_iseq")),       /* => */ the_location->should_use_iseq ? Qtrue : Qfalse,
+    ID2SYM(rb_intern("ruby_frame?"))  ,         /* => */ to_boolean(the_location->is_ruby_frame),
+    ID2SYM(rb_intern("should_use_iseq")),       /* => */ to_boolean(the_location->should_use_iseq),
     ID2SYM(rb_intern("vm_method_type")),        /* => */ INT2FIX(the_location->vm_method_type),
     ID2SYM(rb_intern("line_number")),           /* => */ INT2FIX(the_location->line_number),
     ID2SYM(rb_intern("called_id")),             /* => */ backtracie_called_id(the_location),
     ID2SYM(rb_intern("defined_class")),         /* => */ backtracie_defined_class(the_location),
+    ID2SYM(rb_intern("self")),                  /* => */ the_location->self,
+    ID2SYM(rb_intern("self_class_singleton?")), /* => */ to_boolean(is_self_class_singleton(the_location)),
     ID2SYM(rb_intern("iseq")),                  /* => */ debug_frame(the_location->iseq),
     ID2SYM(rb_intern("callable_method_entry")), /* => */ debug_frame(the_location->callable_method_entry)
   };
@@ -214,4 +265,8 @@ static VALUE debug_frame(VALUE frame) {
   VALUE debug_hash = rb_hash_new();
   rb_hash_bulk_insert(VALUE_COUNT(arguments), arguments, debug_hash);
   return debug_hash;
+}
+
+static inline VALUE to_boolean(int value) {
+  return value ? Qtrue : Qfalse;
 }

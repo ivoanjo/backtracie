@@ -180,6 +180,9 @@ static int backtracie_rb_profile_frames_for_execution_context(
     raw_locations[i].iseq = Qnil;
     raw_locations[i].callable_method_entry = Qnil;
 
+    // The current object this is getting called on!
+    raw_locations[i].self = cfp->self;
+
     cme = rb_vm_frame_method_entry(cfp);
 
     if (VM_FRAME_RUBYFRAME_P(cfp)) {
@@ -246,6 +249,16 @@ VALUE backtracie_defined_class(raw_location *the_location) {
   return \
     ((rb_callable_method_entry_t *) the_location->callable_method_entry)
       ->defined_class;
+}
+
+VALUE backtracie_rb_vm_top_self() {
+  return GET_VM()->top_self;
+}
+
+VALUE backtracie_iseq_is_block(raw_location *the_location) {
+  if (the_location->iseq == Qnil) return false;
+
+  return (((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_BLOCK) ? Qtrue : Qfalse;
 }
 
 // For more details on the objective of this backport, see the comments on ruby_shards.h

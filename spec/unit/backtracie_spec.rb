@@ -22,6 +22,9 @@ require "backtracie"
 
 require "unit/interesting_backtrace_helper"
 
+# Used for testing below
+TOP_LEVEL_BLOCK = proc { |&block| block.call }
+
 RSpec.describe Backtracie do
   shared_examples "an equivalent of the Ruby API (using locations)" do
     it "returns an array of Backtracie::Location instances" do
@@ -140,6 +143,54 @@ RSpec.describe Backtracie do
 
       it "includes the method name in the qualified_method_name of a test_method call frame" do
         expect(backtracie_stack[2].qualified_method_name).to end_with("test_method")
+      end
+    end
+
+    context "when sampling a top-level block" do
+      let!(:backtraces_for_comparison) {
+        [TOP_LEVEL_BLOCK.call { described_class.backtrace_locations(Thread.current) }, TOP_LEVEL_BLOCK.call { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        expect(backtracie_stack[2].qualified_method_name).to eq "Object$<main>\#{block}"
+      end
+    end
+
+    context "when sampling a singleton object" do
+      let(:singleton_object) {
+        Object.new.tap { |it|
+          def it.test_method
+            yield
+          end
+        }
+      }
+
+      let!(:backtraces_for_comparison) {
+        [singleton_object.test_method { described_class.backtrace_locations(Thread.current) }, singleton_object.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        pending "WIP"
+
+        expect(backtracie_stack[2].qualified_method_name).to eq "Object$singleton#test_method"
+      end
+
+      context "when singleton class has been expanded" do
+        before do
+          # While conceptually every Ruby object has a singleton class, this singleton class is actually lazily created,
+          # so it's important to test both the unexpanded as well as the expanded states for it... I think
+          singleton_object.singleton_class
+        end
+
+        it do
+          pending "WIP"
+
+          expect(backtracie_stack[2].qualified_method_name).to eq "Object$singleton#test_method"
+        end
       end
     end
 
