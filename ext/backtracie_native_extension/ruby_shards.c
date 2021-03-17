@@ -240,6 +240,14 @@ VALUE backtracie_called_id(raw_location *the_location) {
   );
 }
 
+VALUE backtracie_defined_class(raw_location *the_location) {
+  if (the_location->callable_method_entry == Qnil) return Qnil;
+
+  return \
+    ((rb_callable_method_entry_t *) the_location->callable_method_entry)
+      ->defined_class;
+}
+
 // For more details on the objective of this backport, see the comments on ruby_shards.h
 // This is used for Ruby < 3.0.0
 #ifdef CFUNC_FRAMES_BACKPORT_NEEDED

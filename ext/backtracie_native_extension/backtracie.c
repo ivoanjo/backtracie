@@ -185,6 +185,7 @@ static VALUE debug_raw_location(raw_location *the_location) {
     ID2SYM(rb_intern("vm_method_type")),        /* => */ INT2FIX(the_location->vm_method_type),
     ID2SYM(rb_intern("line_number")),           /* => */ INT2FIX(the_location->line_number),
     ID2SYM(rb_intern("called_id")),             /* => */ backtracie_called_id(the_location),
+    ID2SYM(rb_intern("defined_class")),         /* => */ backtracie_defined_class(the_location),
     ID2SYM(rb_intern("iseq")),                  /* => */ debug_frame(the_location->iseq),
     ID2SYM(rb_intern("callable_method_entry")), /* => */ debug_frame(the_location->callable_method_entry)
   };

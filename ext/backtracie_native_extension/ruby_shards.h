@@ -128,6 +128,7 @@ typedef struct {
 int backtracie_rb_profile_frames(int limit, raw_location *raw_locations);
 int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_location *raw_locations);
 VALUE backtracie_called_id(raw_location *the_location);
+VALUE backtracie_defined_class(raw_location *the_location);
 
 // -----------------------------------------------------------------------------
 
