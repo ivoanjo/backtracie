@@ -105,6 +105,9 @@
       VM_METHOD_TYPE_REFINED,   /*!< refinement */
     } rb_method_type_t;
     #define VM_METHOD_TYPE_MINIMUM_BITS 4
+
+    // Needed for Ruby 2.6 as this is not defined on any public header
+    void rb_hash_bulk_insert(long, const VALUE *, VALUE);
   #endif
 
 // -----------------------------------------------------------------------------
