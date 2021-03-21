@@ -23,7 +23,16 @@ require "rspec/core/rake_task"
 require "standard/rake"
 require "rake/extensiontask"
 
-RSpec::Core::RakeTask.new(:spec)
 Rake::ExtensionTask.new("backtracie_native_extension")
+
+RSpec::Core::RakeTask.new(:spec) do |task|
+  # This hack allows easily passing arguments to rspec, e.g. doing
+  # bundle exec rake spec -- ./spec/unit/backtracie_spec.rb:123
+  if ARGV.include?("--")
+    arguments = ARGV[ARGV.index("--")..-1]
+    puts "opts: #{arguments}"
+    task.rspec_opts = arguments.join(" ")
+  end
+end
 
 task default: [:compile, :spec, :'standard:fix']
