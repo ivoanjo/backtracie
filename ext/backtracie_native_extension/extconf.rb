@@ -36,6 +36,10 @@ if RUBY_VERSION < "3"
   $defs << "-DCFUNC_FRAMES_BACKPORT_NEEDED"
 end
 
+if RUBY_VERSION < "2.6"
+  $defs << "-DPRE_MJIT_RUBY"
+end
+
 create_header
 
 # The Ruby MJIT header is always (afaik?) suffixed with the exact RUBY version,

@@ -103,6 +103,9 @@
 //    It's a simpler approach, and hopefully avoids any problems.
 
 #include "extconf.h"
+
+#ifndef PRE_MJIT_RUBY
+
 #ifndef RUBY_MJIT_HEADER_INCLUDED
 #define RUBY_MJIT_HEADER_INCLUDED
 #include RUBY_MJIT_HEADER
@@ -145,6 +148,15 @@ calc_lineno(const rb_iseq_t *iseq, const VALUE *pc)
     }
 }
 
+static VALUE
+id2str(ID id)
+{
+    VALUE str = rb_id2str(id);
+    if (!str) return Qnil;
+    return str;
+}
+#define rb_id2str(id) id2str(id)
+
 // Hacked version of Ruby's rb_profile_frames from Ruby 3.0.0 with the following changes:
 // 1. Instead of just using the rb_execution_context_t for the current thread, the context is received as an argument,
 //    thus allowing the sampling of any thread in the VM, not just the current one.
@@ -175,10 +187,12 @@ static int backtracie_rb_profile_frames_for_execution_context(
     // Initialize the raw_location, to avoid issues
     raw_locations[i].is_ruby_frame = false;
     raw_locations[i].should_use_iseq = false;
+    raw_locations[i].should_use_cfunc_name = false;
     raw_locations[i].vm_method_type = 0;
     raw_locations[i].line_number = 0;
     raw_locations[i].iseq = Qnil;
     raw_locations[i].callable_method_entry = Qnil;
+    raw_locations[i].cfunc_name = Qnil;
 
     // The current object this is getting called on!
     raw_locations[i].self = cfp->self;
@@ -296,15 +310,6 @@ cframe(VALUE frame)
     return NULL;
 }
 
-static VALUE
-id2str(ID id)
-{
-    VALUE str = rb_id2str(id);
-    if (!str) return Qnil;
-    return str;
-}
-#define rb_id2str(id) id2str(id)
-
 static const rb_iseq_t *
 frame2iseq(VALUE frame)
 {
@@ -343,4 +348,133 @@ backported_rb_profile_frame_method_name(VALUE frame)
     return iseq ? rb_iseq_method_name(iseq) : Qnil;
 }
 
-#endif
+#endif // CFUNC_FRAMES_BACKPORT_NEEDED
+#endif // ifndef PRE_MJIT_RUBY
+
+// -----------------------------------------------------------------------------
+
+#ifdef PRE_MJIT_RUBY
+
+#include <stdbool.h>
+
+#include "ruby.h"
+
+#include "ruby_shards.h"
+
+typedef struct rb_backtrace_location_struct {
+  enum LOCATION_TYPE {
+    LOCATION_TYPE_ISEQ = 1,
+    LOCATION_TYPE_ISEQ_CALCED,
+    LOCATION_TYPE_CFUNC,
+  } type;
+
+  union {
+    struct {
+      const VALUE iseq; // Originally const rb_iseq_t *
+      union {
+        const VALUE *pc;
+        int lineno;
+      } lineno;
+    } iseq;
+    struct {
+      ID mid;
+      struct rb_backtrace_location_struct *prev_loc;
+    } cfunc;
+  } body;
+} rb_backtrace_location_t;
+
+struct valued_frame_info {
+  rb_backtrace_location_t *loc;
+  VALUE btobj;
+};
+
+// For Ruby < 2.6, we can't rely on the MJIT header. So we need to get... crafty. This alternative to
+// backtracie_rb_profile_frames_for_execution_context(...) piggybacks on the actual
+// Thread::Backtrace::Locations instances returned by Ruby's Thread#backtrace_locations, and then uses
+// knowledge of the VM internal layouts to get the data we need out of them.
+//
+// Currently, this approach gets us a lot less information than the Ruby >= 2.6 approach (e.g. currently we
+// get exactly the same as Thread::Backtrace::Locations offers), so it's a crappier replacement, but it does
+// get us support for older Rubies so it's better than nothing (to check the differences in behavior, check which
+// tests are disabled on < 2.6).
+int backtracie_profile_frames_from_ruby_locations(
+  VALUE ruby_locations_array,
+  raw_location *raw_locations
+) {
+  Check_Type(ruby_locations_array, T_ARRAY);
+  int ruby_locations_array_size = RARRAY_LEN(ruby_locations_array);
+
+  for (int i = 0; i < ruby_locations_array_size; i++) {
+    // FIXME: We should validate that what we get out of the array is a Thread::Backtrace::Location instance
+    VALUE location = rb_ary_entry(ruby_locations_array, i);
+
+    // The leap of faith -- let's get into the data from the Location instance
+    struct valued_frame_info *location_payload = DATA_PTR(location);
+
+    if (location_payload->loc->type == LOCATION_TYPE_ISEQ) {
+      // Trigger calculation of the line number; this is calculated lazily when this method is invoked and
+      // it turns the location type from LOCATION_TYPE_ISEQ to LOCATION_TYPE_ISEQ_CALCED.
+      rb_funcall(location, rb_intern("lineno"), 0);
+
+      if (location_payload->loc->type == LOCATION_TYPE_ISEQ) {
+        rb_raise(rb_eRuntimeError, "Internal error: Calling #lineno didn't turn a location into a LOCATION_TYPE_ISEQ_CALCED");
+      }
+    }
+
+    if (location_payload->loc->type == LOCATION_TYPE_ISEQ || location_payload->loc->type == LOCATION_TYPE_ISEQ_CALCED) {
+      // Ruby frame
+      raw_locations[i].is_ruby_frame = true;
+      raw_locations[i].should_use_iseq = true;
+      raw_locations[i].should_use_cfunc_name = false;
+      raw_locations[i].vm_method_type = -1;
+      // FIXME: Poke MRI to always get the "calced" version, see location_lineno in vm_backtrace for the context
+      raw_locations[i].line_number =
+        location_payload->loc->type == LOCATION_TYPE_ISEQ_CALCED ?
+          location_payload->loc->body.iseq.lineno.lineno : 0;
+      raw_locations[i].iseq = (VALUE) location_payload->loc->body.iseq.iseq;
+      raw_locations[i].callable_method_entry = Qnil;
+      raw_locations[i].self = Qnil;
+      raw_locations[i].cfunc_name = Qnil;
+    } else {
+      // cfunc frame
+      raw_locations[i].is_ruby_frame = false;
+      raw_locations[i].should_use_iseq = false;
+      raw_locations[i].should_use_cfunc_name = true;
+      raw_locations[i].vm_method_type = -1;
+      raw_locations[i].line_number = 0;
+      raw_locations[i].iseq = Qnil;
+      raw_locations[i].callable_method_entry = Qnil;
+      raw_locations[i].self = Qnil;
+      raw_locations[i].cfunc_name = rb_id2str(location_payload->loc->body.cfunc.mid);
+    }
+  }
+
+  return ruby_locations_array_size;
+}
+
+VALUE backtracie_called_id(raw_location *the_location) {
+  // Not available on PRE_MJIT_RUBY
+  return Qnil;
+}
+
+VALUE backtracie_defined_class(raw_location *the_location) {
+  // Not available on PRE_MJIT_RUBY
+  return Qnil;
+}
+
+VALUE backtracie_rb_vm_top_self() {
+  // This is only used on gem initialization so... Let's be a bit lazy :)
+  return rb_eval_string("TOPLEVEL_BINDING.eval('self')");
+}
+
+bool backtracie_iseq_is_block(raw_location *the_location) {
+  // Not available on PRE_MJIT_RUBY
+  return false;
+}
+
+bool backtracie_iseq_is_eval(raw_location *the_location) {
+  // Not available on PRE_MJIT_RUBY
+  return false;
+}
+
+#endif // ifdef PRE_MJIT_RUBY

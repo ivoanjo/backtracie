@@ -95,6 +95,10 @@ RSpec.configure do |config|
   # test failures related to randomization by passing the same `--seed` value
   # as the one that triggered the failure.
   Kernel.srand config.seed
+
+  config.before(:example, :"on ruby 2.6 and above") do
+    pending("Not yet supported on Ruby < 2.6") if RUBY_VERSION < "2.6"
+  end
 end
 
 require "pry"

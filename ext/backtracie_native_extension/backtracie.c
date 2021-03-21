@@ -32,6 +32,8 @@
 static VALUE main_object_instance = Qnil;
 static ID ensure_object_is_thread_id;
 static ID to_s_id;
+static ID current_id;
+static ID backtrace_locations_id;
 static VALUE backtracie_module = Qnil;
 static VALUE backtracie_location_class = Qnil;
 
@@ -53,6 +55,8 @@ void Init_backtracie_native_extension(void) {
   main_object_instance = backtracie_rb_vm_top_self();
   ensure_object_is_thread_id = rb_intern("ensure_object_is_thread");
   to_s_id = rb_intern("to_s");
+  current_id = rb_intern("current");
+  backtrace_locations_id = rb_intern("backtrace_locations");
 
   backtracie_module = rb_const_get(rb_cObject, rb_intern("Backtracie"));
   rb_global_variable(&backtracie_module);
@@ -72,12 +76,26 @@ static VALUE collect_backtrace_locations(VALUE self, VALUE thread, int ignored_s
   int stack_depth = 0;
   raw_location raw_locations[MAX_STACK_DEPTH];
 
-  if (thread == Qnil) {
-    // Get for own thread
-    stack_depth = backtracie_rb_profile_frames(MAX_STACK_DEPTH, raw_locations);
-  } else {
-    stack_depth = backtracie_rb_profile_frames_for_thread(thread, MAX_STACK_DEPTH, raw_locations);
-  }
+  #ifndef PRE_MJIT_RUBY
+    if (thread == Qnil) {
+      // Get for own thread
+      stack_depth = backtracie_rb_profile_frames(MAX_STACK_DEPTH, raw_locations);
+    } else {
+      stack_depth = backtracie_rb_profile_frames_for_thread(thread, MAX_STACK_DEPTH, raw_locations);
+    }
+  #else
+    VALUE current_thread = rb_funcall(rb_cThread, current_id, 0);
+
+    if (thread == Qnil || thread == current_thread) {
+      thread = current_thread;
+      // Since we're going to sample the current thread, we don't want Thread#backtrace_locations to show up
+      // on the stack (as we want to match the exact depth we get from MRI), so we ignore one extra frame
+      ignored_stack_top_frames++;
+    }
+
+    VALUE locations_array = rb_funcall(thread, backtrace_locations_id, 0);
+    stack_depth = backtracie_profile_frames_from_ruby_locations(locations_array, raw_locations);
+  #endif
 
   VALUE locations = rb_ary_new_capa(stack_depth - ignored_stack_top_frames);
 
@@ -167,7 +185,9 @@ static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *l
     last_ruby_location != 0 ? frame_from_location(last_ruby_location) : Qnil;
 
   // Replaces label and base_label in cfuncs
-  VALUE method_name = backtracie_rb_profile_frame_method_name(the_location->callable_method_entry);
+  VALUE method_name =
+    the_location->should_use_cfunc_name ?
+      the_location->cfunc_name : backtracie_rb_profile_frame_method_name(the_location->callable_method_entry);
 
   return new_location(
     last_ruby_frame != Qnil ? rb_profile_frame_absolute_path(last_ruby_frame) : Qnil,
@@ -241,6 +261,7 @@ static VALUE debug_raw_location(raw_location *the_location) {
   VALUE arguments[] = {
     ID2SYM(rb_intern("ruby_frame?"))  ,         /* => */ to_boolean(the_location->is_ruby_frame),
     ID2SYM(rb_intern("should_use_iseq")),       /* => */ to_boolean(the_location->should_use_iseq),
+    ID2SYM(rb_intern("should_use_cfunc_name")), /* => */ to_boolean(the_location->should_use_cfunc_name),
     ID2SYM(rb_intern("vm_method_type")),        /* => */ INT2FIX(the_location->vm_method_type),
     ID2SYM(rb_intern("line_number")),           /* => */ INT2FIX(the_location->line_number),
     ID2SYM(rb_intern("called_id")),             /* => */ backtracie_called_id(the_location),
@@ -249,12 +270,16 @@ static VALUE debug_raw_location(raw_location *the_location) {
     ID2SYM(rb_intern("self_class_singleton?")), /* => */ to_boolean(is_self_class_singleton(the_location)),
     ID2SYM(rb_intern("iseq_is_block?")),        /* => */ to_boolean(backtracie_iseq_is_block(the_location)),
     ID2SYM(rb_intern("iseq_is_eval?")),         /* => */ to_boolean(backtracie_iseq_is_eval(the_location)),
+    ID2SYM(rb_intern("cfunc_name")),            /* => */ the_location->cfunc_name,
     ID2SYM(rb_intern("iseq")),                  /* => */ debug_frame(the_location->iseq),
     ID2SYM(rb_intern("callable_method_entry")), /* => */ debug_frame(the_location->callable_method_entry)
   };
 
   VALUE debug_hash = rb_hash_new();
+  #ifndef PRE_MJIT_RUBY
+  // FIXME: Hack, need to actually fix this
   rb_hash_bulk_insert(VALUE_COUNT(arguments), arguments, debug_hash);
+  #endif
   return debug_hash;
 }
 
@@ -275,7 +300,10 @@ static VALUE debug_frame(VALUE frame) {
   };
 
   VALUE debug_hash = rb_hash_new();
+  #ifndef PRE_MJIT_RUBY
+  // FIXME: Hack, need to actually fix this
   rb_hash_bulk_insert(VALUE_COUNT(arguments), arguments, debug_hash);
+  #endif
   return debug_hash;
 }
 

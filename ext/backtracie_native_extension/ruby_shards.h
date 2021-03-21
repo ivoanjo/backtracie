@@ -118,21 +118,29 @@ typedef struct {
   // for ruby frames where the callable_method_entry is not of type VM_METHOD_TYPE_ISEQ, most of the metadata we
   // want can be found by querying the iseq, and there may not even be an callable_method_entry
   unsigned int should_use_iseq : 1;
+  unsigned int should_use_cfunc_name : 1;
 
   rb_method_type_t vm_method_type : VM_METHOD_TYPE_MINIMUM_BITS;
   int line_number;
   VALUE iseq;
   VALUE callable_method_entry;
   VALUE self;
+  VALUE cfunc_name;
 } raw_location;
 
-int backtracie_rb_profile_frames(int limit, raw_location *raw_locations);
-int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_location *raw_locations);
+  #ifndef PRE_MJIT_RUBY
+    int backtracie_rb_profile_frames(int limit, raw_location *raw_locations);
+    int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_location *raw_locations);
+  #endif
 VALUE backtracie_called_id(raw_location *the_location);
 VALUE backtracie_defined_class(raw_location *the_location);
 VALUE backtracie_rb_vm_top_self();
 bool backtracie_iseq_is_block(raw_location *the_location);
 bool backtracie_iseq_is_eval(raw_location *the_location);
+
+  #ifdef PRE_MJIT_RUBY
+    int backtracie_profile_frames_from_ruby_locations(VALUE ruby_locations_array, raw_location *raw_locations);
+  #endif
 
 // -----------------------------------------------------------------------------
 

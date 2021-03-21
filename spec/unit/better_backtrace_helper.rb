@@ -41,7 +41,7 @@ module BetterBacktrace
             tracepoint.defined_class.to_s,
             [Module, Class].include?(tracepoint.self&.class), # self_class_module_or_class?
             tracepoint.method_id,
-            tracepoint.parameters,
+            (RUBY_VERSION >= "2.6.0" ? tracepoint.parameters : []),
             tracepoint.path,
             tracepoint.lineno,
             tracepoint.defined_class&.singleton_class? == true, # defined_class_singleton_class?
