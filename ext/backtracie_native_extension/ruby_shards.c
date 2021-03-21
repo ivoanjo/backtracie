@@ -255,16 +255,16 @@ VALUE backtracie_rb_vm_top_self() {
   return GET_VM()->top_self;
 }
 
-VALUE backtracie_iseq_is_block(raw_location *the_location) {
+bool backtracie_iseq_is_block(raw_location *the_location) {
   if (the_location->iseq == Qnil) return false;
 
-  return (((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_BLOCK) ? Qtrue : Qfalse;
+  return ((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_BLOCK;
 }
 
-VALUE backtracie_iseq_is_eval(raw_location *the_location) {
+bool backtracie_iseq_is_eval(raw_location *the_location) {
   if (the_location->iseq == Qnil) return false;
 
-  return (((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_EVAL) ? Qtrue : Qfalse;
+  return ((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_EVAL;
 }
 
 // For more details on the objective of this backport, see the comments on ruby_shards.h
