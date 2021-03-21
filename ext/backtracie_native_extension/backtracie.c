@@ -47,7 +47,7 @@ static VALUE qualified_method_name_from_self(raw_location *the_location);
 static bool is_self_class_singleton(raw_location *the_location);
 static VALUE debug_raw_location(raw_location *the_location);
 static VALUE debug_frame(VALUE frame);
-static inline VALUE to_boolean(int value) ;
+static inline VALUE to_boolean(bool value) ;
 
 void Init_backtracie_native_extension(void) {
   main_object_instance = backtracie_rb_vm_top_self();
@@ -273,6 +273,6 @@ static VALUE debug_frame(VALUE frame) {
   return debug_hash;
 }
 
-static inline VALUE to_boolean(int value) {
+static inline VALUE to_boolean(bool value) {
   return value ? Qtrue : Qfalse;
 }
