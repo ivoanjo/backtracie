@@ -243,6 +243,8 @@ static VALUE debug_raw_location(raw_location *the_location) {
     ID2SYM(rb_intern("defined_class")),         /* => */ backtracie_defined_class(the_location),
     ID2SYM(rb_intern("self")),                  /* => */ the_location->self,
     ID2SYM(rb_intern("self_class_singleton?")), /* => */ to_boolean(is_self_class_singleton(the_location)),
+    ID2SYM(rb_intern("iseq_is_block?")),        /* => */ to_boolean(backtracie_iseq_is_block(the_location)),
+    ID2SYM(rb_intern("iseq_is_eval?")),         /* => */ to_boolean(backtracie_iseq_is_eval(the_location)),
     ID2SYM(rb_intern("iseq")),                  /* => */ debug_frame(the_location->iseq),
     ID2SYM(rb_intern("callable_method_entry")), /* => */ debug_frame(the_location->callable_method_entry)
   };
