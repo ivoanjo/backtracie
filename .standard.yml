@@ -1,6 +1,6 @@
 # Currently we only support >= 3.0.0 but I suspect we'll be able to support as far back as the Ruby version that
 # introduced mjit without a lot of trouble, so let's avoid making the code dependent on 3.0-only features
-ruby_version: 2.4
+ruby_version: 2.3
 
 ignore:
   - 'spec/unit/interesting_backtrace_helper.rb': # let's just say this file is special

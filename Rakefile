@@ -20,7 +20,7 @@
 
 require "bundler/gem_tasks"
 require "rspec/core/rake_task"
-require "standard/rake"
+require "standard/rake" unless RUBY_VERSION < "2.4"
 require "rake/extensiontask"
 
 Rake::ExtensionTask.new("backtracie_native_extension")
@@ -35,4 +35,8 @@ RSpec::Core::RakeTask.new(:spec) do |task|
   end
 end
 
-task default: [:compile, :spec, :'standard:fix']
+task default: [
+  :compile,
+  :spec,
+  (:'standard:fix' unless RUBY_VERSION < "2.4")
+].compact

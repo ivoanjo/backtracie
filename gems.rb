@@ -12,4 +12,4 @@ gem "rspec", "~> 3.10"
 # Tools
 gem "pry"
 gem "pry-byebug"
-gem "standard", "~> 1.0"
+gem "standard", "~> 1.0" unless RUBY_VERSION < "2.4"
