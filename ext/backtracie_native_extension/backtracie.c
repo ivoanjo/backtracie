@@ -181,7 +181,11 @@ static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *l
 }
 
 static VALUE frame_from_location(raw_location *the_location) {
-  return the_location->should_use_iseq ? the_location->iseq : the_location->callable_method_entry;
+  return \
+    the_location->should_use_iseq ||
+    // This one is somewhat weird, but the regular MRI Ruby APIs seem to pick the iseq for evals as well
+    backtracie_iseq_is_eval(the_location) ?
+      the_location->iseq : the_location->callable_method_entry;
 }
 
 static VALUE qualified_method_name_for_block(raw_location *the_location) {

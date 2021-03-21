@@ -182,8 +182,20 @@ class ClassK
   end
 end
 
+class ClassL
+  def hello
+    ClassK.new.send(:instance_eval, "hello")
+  end
+end
+
+class ClassM
+  def hello
+    ClassL.new.send(:eval, "hello")
+  end
+end
+
 def top_level_hello
-  ClassK.new.hello
+  ClassM.new.hello
 end
 
 SAMPLE_BACKGROUND_THREAD = Thread.new do
