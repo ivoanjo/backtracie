@@ -261,6 +261,12 @@ VALUE backtracie_iseq_is_block(raw_location *the_location) {
   return (((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_BLOCK) ? Qtrue : Qfalse;
 }
 
+VALUE backtracie_iseq_is_eval(raw_location *the_location) {
+  if (the_location->iseq == Qnil) return false;
+
+  return (((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_EVAL) ? Qtrue : Qfalse;
+}
+
 // For more details on the objective of this backport, see the comments on ruby_shards.h
 // This is used for Ruby < 3.0.0
 #ifdef CFUNC_FRAMES_BACKPORT_NEEDED

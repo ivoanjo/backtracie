@@ -132,6 +132,7 @@ VALUE backtracie_called_id(raw_location *the_location);
 VALUE backtracie_defined_class(raw_location *the_location);
 VALUE backtracie_rb_vm_top_self();
 VALUE backtracie_iseq_is_block(raw_location *the_location);
+VALUE backtracie_iseq_is_eval(raw_location *the_location);
 
 // -----------------------------------------------------------------------------
 

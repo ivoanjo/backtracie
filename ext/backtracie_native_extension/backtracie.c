@@ -220,7 +220,7 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
     rb_str_concat(name, rb_str_new2("#"));
   }
 
-  if (backtracie_iseq_is_block(the_location)) {
+  if (backtracie_iseq_is_block(the_location) || backtracie_iseq_is_eval(the_location)) {
     rb_str_concat(name, rb_str_new2("{block}"));
   } else {
     rb_str_concat(name, rb_profile_frame_base_label(frame_from_location(the_location)));

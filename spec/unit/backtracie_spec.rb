@@ -108,6 +108,10 @@ RSpec.describe Backtracie do
       }
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        expect(backtracie_stack[1].qualified_method_name).to eq self.class.name + "$singleton\#{block}"
+      end
     end
 
     context "when sampling the interesting backtrace helper" do
