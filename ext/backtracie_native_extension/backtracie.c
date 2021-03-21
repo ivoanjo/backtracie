@@ -139,10 +139,13 @@ static VALUE ruby_frame_to_location(raw_location *the_location) {
 
   VALUE qualified_method_name = Qnil;
 
-  if (the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD) {
+  if (is_self_class_singleton(the_location)) {
+    qualified_method_name = qualified_method_name_from_self(the_location);
+  } else if (the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD) {
     qualified_method_name = qualified_method_name_for_block(the_location);
   } else {
     qualified_method_name = rb_profile_frame_qualified_method_name(frame);
+
     if (qualified_method_name == Qnil) {
       qualified_method_name = qualified_method_name_from_self(the_location);
     }
@@ -205,7 +208,8 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
     if (the_location->self == main_object_instance) {
       rb_str_concat(name, rb_str_new2("Object$<main>#"));
     } else {
-      VALUE the_class = RCLASS_SUPER(self_class);
+      // Crawl up the hierarchy to find a real class
+      VALUE the_class = rb_class_real(self_class);
       rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
       rb_str_concat(name, rb_str_new2("$singleton#"));
     }
@@ -218,6 +222,8 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
 
   if (backtracie_iseq_is_block(the_location)) {
     rb_str_concat(name, rb_str_new2("{block}"));
+  } else {
+    rb_str_concat(name, rb_profile_frame_base_label(frame_from_location(the_location)));
   }
 
   return name;

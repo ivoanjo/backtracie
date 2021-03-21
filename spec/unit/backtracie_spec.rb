@@ -174,8 +174,6 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
       it do
-        pending "WIP"
-
         expect(backtracie_stack[2].qualified_method_name).to eq "Object$singleton#test_method"
       end
 
@@ -187,8 +185,6 @@ RSpec.describe Backtracie do
         end
 
         it do
-          pending "WIP"
-
           expect(backtracie_stack[2].qualified_method_name).to eq "Object$singleton#test_method"
         end
       end
