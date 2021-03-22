@@ -5,47 +5,65 @@ services:
     image: ruby:2.1
     volumes:
       - .:/app
+      - bundle-2.1:/usr/local/bundle
     command:
       bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.2:
     image: ruby:2.2
     volumes:
       - .:/app
+      - bundle-2.2:/usr/local/bundle
     command:
       bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.3:
     image: ruby:2.3
     volumes:
       - .:/app
+      - bundle-2.3:/usr/local/bundle
     command:
       bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.4:
     image: ruby:2.4
     volumes:
       - .:/app
+      - bundle-2.4:/usr/local/bundle
     command:
       bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.5:
     image: ruby:2.5
     volumes:
       - .:/app
+      - bundle-2.5:/usr/local/bundle
     command:
       bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.6:
     image: ruby:2.6
     volumes:
       - .:/app
+      - bundle-2.6:/usr/local/bundle
     command:
       bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.7:
     image: ruby:2.7
     volumes:
       - .:/app
+      - bundle-2.7:/usr/local/bundle
     command:
       bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-3.0:
     image: ruby:3.0
     volumes:
       - .:/app
+      - bundle-3.0:/usr/local/bundle
     command:
       bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+
+volumes:
+  bundle-2.1:
+  bundle-2.2:
+  bundle-2.3:
+  bundle-2.4:
+  bundle-2.5:
+  bundle-2.6:
+  bundle-2.7:
+  bundle-3.0:
