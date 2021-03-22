@@ -32,7 +32,9 @@ require "mkmf"
 $CFLAGS << " " << "-Wno-unused-function"
 
 # Enable us to use """modern""" C
-$CFLAGS << " " << "-std=c99"
+if RUBY_VERSION < "2.4"
+  $CFLAGS << " " << "-std=c99"
+end
 
 # On older Rubies, we need to enable a few backports. See cfunc_frames_backport.h for details.
 if RUBY_VERSION < "3"
