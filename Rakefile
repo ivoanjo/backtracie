@@ -33,6 +33,10 @@ RSpec::Core::RakeTask.new(:spec) do |task|
     puts "opts: #{arguments}"
     task.rspec_opts = arguments.join(" ")
   end
+
+  if ENV["RSPEC_PROGRESS"] == "true"
+    task.rspec_opts = "--format=progress #{task.rspec_opts}"
+  end
 end
 
 task default: [
