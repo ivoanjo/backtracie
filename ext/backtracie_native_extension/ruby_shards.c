@@ -477,4 +477,9 @@ bool backtracie_iseq_is_eval(raw_location *the_location) {
   return false;
 }
 
+VALUE backported_rb_profile_frame_method_name(VALUE frame) {
+  // Not available on PRE_MJIT_RUBY
+  return Qnil;
+}
+
 #endif // ifdef PRE_MJIT_RUBY
