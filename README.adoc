@@ -55,6 +55,7 @@ To open a console with the gem loaded, run `bundle console`.
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to https://rubygems.org[rubygems.org].
 
 To test on specific Ruby versions you can use docker. E.g. to test on Ruby 2.6, use `docker-compose run ruby-2.6`.
+To test on all rubies using docker, you can use `bundle exec rake test-all`.
 
 == Feedback and success stories
 

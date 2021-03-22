@@ -40,3 +40,9 @@ task default: [
   :spec,
   (:'standard:fix' unless RUBY_VERSION < "2.4")
 ].compact
+
+task :"test-all" do
+  ["2.3", "2.4", "2.5", "2.6", "2.7", "3.0"].each do |version|
+    sh "docker-compose run ruby-#{version}"
+  end
+end
