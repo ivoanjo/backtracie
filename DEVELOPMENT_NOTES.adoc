@@ -389,12 +389,12 @@ This seems to point to the "block in method" issue either being an implementatio
 
 == TODO
 
-* Benchmarking
+* Benchmarking, performance work
 * Tackle FIXMEs
-* Support Ruby < 2.6
-  ** Possibly by implementing backtracie on top of `Thread::Backtrace::Location` instances -- can we get at the data they store and retrieve what we need?
+* Feature parity for pre-MJIT rubies (is this even possible?)
 * Support showing class name, e.g. https://ivoanjo.me/blog/2020/07/05/ruby-experiment-include-class-names-in-backtraces/
 * Go beyond class name, e.g. https://ivoanjo.me/blog/2020/07/19/better-backtraces-in-ruby-using-tracepoint/
 * Implement equivalents to `Kernel#caller`, `Thread#backtrace`
 * Implement limits (similar to the arguments passed to the regular Ruby APIs)
 * User documentation
+* Allow efficient sampling for later aggregation (e.g. do as little processing as possible during collection?)
