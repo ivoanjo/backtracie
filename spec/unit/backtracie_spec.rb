@@ -211,6 +211,8 @@ RSpec.describe Backtracie do
     end
 
     context "when sampling a top-level block" do
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
       let!(:backtraces_for_comparison) {
         [TOP_LEVEL_BLOCK.call { described_class.backtrace_locations(Thread.current) }, TOP_LEVEL_BLOCK.call { Thread.current.backtrace_locations }]
       }
@@ -231,6 +233,8 @@ RSpec.describe Backtracie do
         }
       }
 
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
       let!(:backtraces_for_comparison) {
         [singleton_object.test_method { described_class.backtrace_locations(Thread.current) }, singleton_object.test_method { Thread.current.backtrace_locations }]
       }
@@ -251,6 +255,28 @@ RSpec.describe Backtracie do
         it nil, :"on ruby 2.6 and above" do
           expect(backtracie_stack[2].qualified_method_name).to eq "Object$singleton#test_method"
         end
+      end
+    end
+
+    context "when sampling a block inside a method" do
+      class ClassWithMethod
+        def test_method(&block)
+          2.times do
+            return block.call
+          end
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [ClassWithMethod.new.test_method { described_class.backtrace_locations(Thread.current) }, ClassWithMethod.new.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it nil, :"on ruby 2.6 and above" do
+        expect(backtracie_stack[2].qualified_method_name).to eq "ClassWithMethod#test_method{block}"
       end
     end
 

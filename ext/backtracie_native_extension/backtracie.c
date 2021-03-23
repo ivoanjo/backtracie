@@ -166,6 +166,9 @@ static VALUE ruby_frame_to_location(raw_location *the_location) {
 
     if (qualified_method_name == Qnil) {
       qualified_method_name = qualified_method_name_from_self(the_location);
+    } else if (backtracie_iseq_is_block(the_location)) {
+      // We use the class and method name from the regular MRI API, but append the extra block label
+      rb_str_concat(qualified_method_name, rb_str_new2("{block}"));
     }
   }
 
