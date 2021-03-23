@@ -122,6 +122,66 @@ RSpec.describe Backtracie do
       }
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      describe "qualified_method_name behavior", :"on ruby 2.6 and above" do
+        let(:expected_stack) {
+          [
+            "ClassA#hello{block}",
+            "Kernel#loop",
+            "ClassA#hello",
+            "ModuleB::ClassB#hello",
+            "ModuleC.hello",
+            "ClassWithStaticMethod.hello",
+            "ModuleD#hello",
+            "Object$<main>\#{block}",
+            "Object$<main>\#{block}",
+            "ClassD$singleton#hello",
+            "ClassE#hello",
+            "UnboundMethod#bind_call",
+            "ClassG$refinement@ContainsRefinement::RefinesClassG#hello",
+            "ModuleE.hello",
+            "ClassH#method_missing",
+            "ClassF#hello{block}",
+            "Integer#times",
+            "ClassF#hello",
+            "ClassI#hello",
+            "Class$singleton.hello",
+            "Object$anonymous#hello",
+            "Module$anonymous.hello",
+            "Object#method_with_complex_parameters",
+            "ClassJ#hello{block}",
+            "ClassJ#hello_helper",
+            "ClassJ#hello{block}",
+            "ClassJ#hello_helper",
+            "ClassJ#hello",
+            "ClassK\#{block}",
+            "Kernel#eval",
+            "ClassK#hello",
+            "ClassK\#{block}",
+            "BasicObject#instance_eval",
+            "ClassL#hello",
+            "ClassL\#{block}",
+            "Kernel#eval",
+            "ClassM#hello",
+            "Object#top_level_hello",
+            "Object$<main>\#{block}",
+            "Kernel#eval",
+            "Object$<main>\#{block}",
+            "Integer#times",
+            "Object$<main>\#{block}",
+            "Integer#times",
+            "Object$<main>\#{block}"
+          ]
+        }
+
+        it "captures the correct class and method names" do
+          pending "Work in progress"
+
+          backtracie_stack[2..-1].zip(expected_stack).each do |backtracie_location, expected_stack_entry|
+            expect(backtracie_location.qualified_method_name).to eq(expected_stack_entry)
+          end
+        end
+      end
     end
 
     context "when sampling a method defined using define_method" do
