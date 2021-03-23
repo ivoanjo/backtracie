@@ -31,6 +31,9 @@ require "mkmf"
 # let's omit it
 $CFLAGS << " " << "-Wno-unused-function"
 
+# Really dislike the "define everything at the beginning of the function" thing, sorry!
+$CFLAGS << " " << "-Wno-declaration-after-statement"
+
 # Enable us to use """modern""" C
 if RUBY_VERSION < "2.4"
   $CFLAGS << " " << "-std=c99"
