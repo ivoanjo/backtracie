@@ -280,6 +280,26 @@ RSpec.describe Backtracie do
       end
     end
 
+    context "when sampling a map from an enumerable" do
+      class ClassWithMethodUsingEnumerable
+        def test_method(&block)
+          2.times.map { block.call }.first
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [ClassWithMethodUsingEnumerable.new.test_method { described_class.backtrace_locations(Thread.current) }, ClassWithMethodUsingEnumerable.new.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it "returns the same number of items as the Ruby API" do
+        pending "Unexpectedly, we're getting one more frame than the regular Ruby API. Needs investigation" unless RUBY_VERSION < "2.6"
+
+        expect(backtracie_stack.size).to be ruby_stack.size
+      end
+    end
+
     context "when first argument is not a thread" do
       it do
         expect { described_class.backtrace_locations(:foo) }.to raise_exception(ArgumentError)
