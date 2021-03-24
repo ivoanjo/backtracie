@@ -28,6 +28,7 @@
 #define MAX_STACK_DEPTH 2000 // FIXME: Need to handle when this is not enough
 
 #define VALUE_COUNT(array) (sizeof(array) / sizeof(VALUE))
+#define SAFE_NAVIGATION(function, maybe_nil) ((maybe_nil) != Qnil ? function(maybe_nil) : Qnil)
 
 static VALUE main_object_instance = Qnil;
 static ID ensure_object_is_thread_id;
@@ -193,11 +194,11 @@ static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *l
       the_location->cfunc_name : backtracie_rb_profile_frame_method_name(the_location->callable_method_entry);
 
   return new_location(
-    last_ruby_frame != Qnil ? rb_profile_frame_absolute_path(last_ruby_frame) : Qnil,
+    SAFE_NAVIGATION(rb_profile_frame_absolute_path, last_ruby_frame),
     method_name,
     method_name,
     last_ruby_location != 0 ? INT2FIX(last_ruby_location->line_number) : Qnil,
-    last_ruby_frame != Qnil ? rb_profile_frame_path(last_ruby_frame) : Qnil,
+    SAFE_NAVIGATION(rb_profile_frame_path, last_ruby_frame),
     rb_profile_frame_qualified_method_name(the_location->callable_method_entry),
     debug_raw_location(the_location)
   );
