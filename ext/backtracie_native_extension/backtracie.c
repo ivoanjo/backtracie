@@ -262,6 +262,8 @@ static bool is_self_class_singleton(raw_location *the_location) {
 }
 
 static VALUE debug_raw_location(raw_location *the_location) {
+  VALUE self_class = SAFE_NAVIGATION(rb_class_of, the_location->self);
+
   VALUE arguments[] = {
     ID2SYM(rb_intern("ruby_frame?"))  ,         /* => */ to_boolean(the_location->is_ruby_frame),
     ID2SYM(rb_intern("should_use_iseq")),       /* => */ to_boolean(the_location->should_use_iseq),
@@ -270,6 +272,8 @@ static VALUE debug_raw_location(raw_location *the_location) {
     ID2SYM(rb_intern("line_number")),           /* => */ INT2FIX(the_location->line_number),
     ID2SYM(rb_intern("called_id")),             /* => */ backtracie_called_id(the_location),
     ID2SYM(rb_intern("defined_class")),         /* => */ backtracie_defined_class(the_location),
+    ID2SYM(rb_intern("self_class")),            /* => */ self_class,
+    ID2SYM(rb_intern("real_class")),            /* => */ SAFE_NAVIGATION(rb_class_real, self_class),
     ID2SYM(rb_intern("self")),                  /* => */ the_location->self,
     ID2SYM(rb_intern("self_class_singleton?")), /* => */ to_boolean(is_self_class_singleton(the_location)),
     ID2SYM(rb_intern("iseq_is_block?")),        /* => */ to_boolean(backtracie_iseq_is_block(the_location)),
