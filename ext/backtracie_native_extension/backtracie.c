@@ -228,7 +228,7 @@ static VALUE qualified_method_name_for_block(raw_location *the_location) {
 static VALUE qualified_method_name_from_self(raw_location *the_location) {
   if (the_location->self == Qnil) return Qnil;
 
-  VALUE self_class = RBASIC_CLASS(the_location->self);
+  VALUE self_class = rb_class_of(the_location->self);
   bool is_self_class_singleton = FL_TEST(self_class, FL_SINGLETON);
 
   VALUE name = rb_str_new2("");
