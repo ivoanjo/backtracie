@@ -238,8 +238,18 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
     } else {
       // Crawl up the hierarchy to find a real class
       VALUE the_class = rb_class_real(self_class);
-      rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
-      rb_str_concat(name, rb_str_new2("$singleton#"));
+
+      // This is similar to BetterBacktraceHelper's self_class_module_or_class?
+      // If the real class of this object is the actual class Class or the class Module,
+      // it means that this is a method being directly called on a given Class/Module,
+      // e.g. Kernel.puts or BasicObject.name. In this case, Ruby already sets the name
+      // correctly, so we just delegate.
+      if (the_class == rb_cModule || the_class == rb_cClass) {
+        return SAFE_NAVIGATION(rb_profile_frame_qualified_method_name, the_location->callable_method_entry);
+      } else {
+        rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
+        rb_str_concat(name, rb_str_new2("$singleton#"));
+      }
     }
   } else {
     // Not very sure if this branch of the if is ever reached, and if it would be for a instance or static call, so

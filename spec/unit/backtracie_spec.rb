@@ -280,6 +280,48 @@ RSpec.describe Backtracie do
       end
     end
 
+    context "when sampling a module_function on a module" do
+      module ModuleWithFunction
+        module_function
+
+        def test_function
+          yield
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [ModuleWithFunction.test_function { described_class.backtrace_locations(Thread.current) }, ModuleWithFunction.test_function { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it nil, :"on ruby 2.6 and above" do
+        expect(backtracie_stack[2].qualified_method_name).to eq "ModuleWithFunction.test_function"
+      end
+    end
+
+    context "when sampling a method directly defined on a class object" do
+      class ClassWithMethodDirectlyDefined
+        def self.test_method
+          yield
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [ClassWithMethodDirectlyDefined.test_method { described_class.backtrace_locations(Thread.current) }, ClassWithMethodDirectlyDefined.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it nil, :"on ruby 2.6 and above" do
+        expect(backtracie_stack[2].qualified_method_name).to eq "ClassWithMethodDirectlyDefined.test_method"
+      end
+    end
+
     context "when sampling a map from an enumerable" do
       class ClassWithMethodUsingEnumerable
         def test_method(&block)
