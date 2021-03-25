@@ -163,7 +163,7 @@ static VALUE ruby_frame_to_location(raw_location *the_location) {
   } else if (the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD) {
     qualified_method_name = qualified_method_name_for_block(the_location);
   } else {
-    qualified_method_name = rb_profile_frame_qualified_method_name(frame);
+    qualified_method_name = backtracie_rb_profile_frame_qualified_method_name(frame);
 
     if (qualified_method_name == Qnil) {
       qualified_method_name = qualified_method_name_from_self(the_location);
@@ -199,7 +199,7 @@ static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *l
     method_name,
     last_ruby_location != 0 ? INT2FIX(last_ruby_location->line_number) : Qnil,
     SAFE_NAVIGATION(rb_profile_frame_path, last_ruby_frame),
-    rb_profile_frame_qualified_method_name(the_location->callable_method_entry),
+    backtracie_rb_profile_frame_qualified_method_name(the_location->callable_method_entry),
     debug_raw_location(the_location)
   );
 }
@@ -213,7 +213,7 @@ static VALUE frame_from_location(raw_location *the_location) {
 }
 
 static VALUE qualified_method_name_for_block(raw_location *the_location) {
-  VALUE class_name = rb_profile_frame_classpath(the_location->callable_method_entry);
+  VALUE class_name = backtracie_rb_profile_frame_classpath(the_location->callable_method_entry);
   VALUE method_name = backtracie_called_id(the_location);
   VALUE is_singleton_method = rb_profile_frame_singleton_method_p(the_location->iseq);
 
@@ -245,7 +245,7 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
       // e.g. Kernel.puts or BasicObject.name. In this case, Ruby already sets the name
       // correctly, so we just delegate.
       if (the_class == rb_cModule || the_class == rb_cClass) {
-        return SAFE_NAVIGATION(rb_profile_frame_qualified_method_name, the_location->callable_method_entry);
+        return SAFE_NAVIGATION(backtracie_rb_profile_frame_qualified_method_name, the_location->callable_method_entry);
       } else {
         rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
         rb_str_concat(name, rb_str_new2("$singleton#"));
@@ -311,10 +311,10 @@ static VALUE debug_frame(VALUE frame) {
     ID2SYM(rb_intern("base_label")),            /* => */ rb_profile_frame_base_label(frame),
     ID2SYM(rb_intern("full_label")),            /* => */ rb_profile_frame_full_label(frame),
     ID2SYM(rb_intern("first_lineno")),          /* => */ rb_profile_frame_first_lineno(frame),
-    ID2SYM(rb_intern("classpath")),             /* => */ rb_profile_frame_classpath(frame),
+    ID2SYM(rb_intern("classpath")),             /* => */ backtracie_rb_profile_frame_classpath(frame),
     ID2SYM(rb_intern("singleton_method_p")),    /* => */ rb_profile_frame_singleton_method_p(frame),
     ID2SYM(rb_intern("method_name")),           /* => */ rb_profile_frame_method_name(frame),
-    ID2SYM(rb_intern("qualified_method_name")), /* => */ rb_profile_frame_qualified_method_name(frame)
+    ID2SYM(rb_intern("qualified_method_name")), /* => */ backtracie_rb_profile_frame_qualified_method_name(frame)
   };
 
   VALUE debug_hash = rb_hash_new();

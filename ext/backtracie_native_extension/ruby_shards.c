@@ -349,6 +349,73 @@ backported_rb_profile_frame_method_name(VALUE frame)
 }
 
 #endif // CFUNC_FRAMES_BACKPORT_NEEDED
+
+#ifdef CLASSPATH_BACKPORT_NEEDED
+static VALUE
+frame2klass(VALUE frame)
+{
+    if (frame == Qnil) return Qnil;
+
+    if (RB_TYPE_P(frame, T_IMEMO)) {
+        const rb_callable_method_entry_t *cme = (rb_callable_method_entry_t *)frame;
+
+        if (imemo_type(frame) == imemo_ment) {
+            return cme->defined_class;
+        }
+    }
+    return Qnil;
+}
+
+VALUE
+backported_rb_profile_frame_classpath(VALUE frame)
+{
+    VALUE klass = frame2klass(frame);
+
+    if (klass && !NIL_P(klass)) {
+        if (RB_TYPE_P(klass, T_ICLASS)) {
+            klass = RBASIC(klass)->klass;
+        }
+        else if (FL_TEST(klass, FL_SINGLETON)) {
+            klass = rb_ivar_get(klass, id__attached__);
+            if (!RB_TYPE_P(klass, T_CLASS) && !RB_TYPE_P(klass, T_MODULE))
+                return rb_sprintf("#<%s:%p>", rb_class2name(rb_obj_class(klass)), (void*)klass);
+        }
+        return rb_class_path(klass);
+    }
+    else {
+        return Qnil;
+    }
+}
+
+static VALUE
+qualified_method_name(VALUE frame, VALUE method_name)
+{
+    if (method_name != Qnil) {
+        VALUE classpath = backported_rb_profile_frame_classpath(frame);
+        VALUE singleton_p = rb_profile_frame_singleton_method_p(frame);
+
+        if (classpath != Qnil) {
+            return rb_sprintf("%"PRIsVALUE"%s%"PRIsVALUE,
+                              classpath, singleton_p == Qtrue ? "." : "#", method_name);
+        }
+        else {
+            return method_name;
+        }
+    }
+    else {
+        return Qnil;
+    }
+}
+
+VALUE
+backported_rb_profile_frame_qualified_method_name(VALUE frame)
+{
+    VALUE method_name = backported_rb_profile_frame_method_name(frame);
+
+    return qualified_method_name(frame, method_name);
+}
+#endif // CLASSPATH_BACKPORT_NEEDED
+
 #endif // ifndef PRE_MJIT_RUBY
 
 // -----------------------------------------------------------------------------

@@ -157,4 +157,18 @@ bool backtracie_iseq_is_eval(raw_location *the_location);
     #define backtracie_rb_profile_frame_method_name rb_profile_frame_method_name
   #endif
 
+  // Backport https://github.com/ruby/ruby/pull/3084 (present in 2.7 and 3.0) to Ruby 2.6
+  // The interesting bit is actually the fix to rb_profile_frame_classpath BUT since rb_profile_frame_qualified_method_name
+  // internally relies on rb_profile_frame_classpath we also need to add a copy of that one as well.
+  #ifdef CLASSPATH_BACKPORT_NEEDED
+    #define backtracie_rb_profile_frame_classpath backported_rb_profile_frame_classpath
+    #define backtracie_rb_profile_frame_qualified_method_name backported_rb_profile_frame_qualified_method_name
+
+    VALUE backported_rb_profile_frame_classpath(VALUE frame);
+    VALUE backported_rb_profile_frame_qualified_method_name(VALUE frame);
+  #else
+    #define backtracie_rb_profile_frame_classpath rb_profile_frame_classpath
+    #define backtracie_rb_profile_frame_qualified_method_name rb_profile_frame_qualified_method_name
+  #endif
+
 #endif
