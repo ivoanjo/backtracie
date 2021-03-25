@@ -387,6 +387,12 @@ backported_rb_profile_frame_classpath(VALUE frame)
     }
 }
 
+// Oddly enough, this method is on debug.h BUT NOT on the MJIT header. Since I've had
+// crashes when trying to combine the MJIT header with the regular Ruby headers, let's
+// just supply the declaration for this function, as otherwise the build seems to fail
+// on macOS in CI.
+VALUE rb_profile_frame_singleton_method_p(VALUE frame);
+
 static VALUE
 qualified_method_name(VALUE frame, VALUE method_name)
 {
