@@ -281,6 +281,28 @@ bool backtracie_iseq_is_eval(raw_location *the_location) {
   return ((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_EVAL;
 }
 
+VALUE backtracie_refinement_name(raw_location *the_location) {
+  VALUE defined_class = backtracie_defined_class(the_location);
+  if (defined_class == Qnil) return Qnil;
+
+  VALUE refinement_module = rb_class_of(defined_class);
+  if (!FL_TEST(refinement_module, RMODULE_IS_REFINEMENT)) return Qnil;
+
+  // The below bits are inspired by Ruby's rb_mod_to_s(VALUE)
+  ID id_refined_class;
+  CONST_ID(id_refined_class, "__refined_class__");
+  VALUE refined_class = rb_attr_get(refinement_module, id_refined_class);
+  if (refined_class == Qnil) return Qnil;
+
+  VALUE result = rb_inspect(refined_class);
+  rb_str_concat(result, rb_str_new2("$refinement@"));
+  ID id_defined_at;
+  CONST_ID(id_defined_at, "__defined_at__");
+  rb_str_concat(result, rb_inspect(rb_attr_get(refinement_module, id_defined_at)));
+
+  return result;
+}
+
 // For more details on the objective of this backport, see the comments on ruby_shards.h
 // This is used for Ruby < 3.0.0
 #ifdef CFUNC_FRAMES_BACKPORT_NEEDED

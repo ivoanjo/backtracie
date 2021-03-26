@@ -43,11 +43,13 @@ static VALUE primitive_backtrace_locations(VALUE self, VALUE thread);
 static VALUE collect_backtrace_locations(VALUE self, VALUE thread, int ignored_stack_top_frames);
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label, VALUE label, VALUE lineno, VALUE path, VALUE qualified_method_name, VALUE debug);
 static VALUE ruby_frame_to_location(raw_location *the_location);
+static VALUE qualified_method_name_for_location(raw_location *the_location);
 static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *last_ruby_location);
 static VALUE frame_from_location(raw_location *the_location);
 static VALUE qualified_method_name_for_block(raw_location *the_location);
 static VALUE qualified_method_name_from_self(raw_location *the_location);
 static bool is_self_class_singleton(raw_location *the_location);
+static bool is_defined_class_a_refinement(raw_location *the_location);
 static VALUE debug_raw_location(raw_location *the_location);
 static VALUE debug_frame(VALUE frame);
 static inline VALUE to_boolean(bool value) ;
@@ -156,9 +158,26 @@ inline static VALUE new_location(
 static VALUE ruby_frame_to_location(raw_location *the_location) {
   VALUE frame = frame_from_location(the_location);
 
+  return new_location(
+    rb_profile_frame_absolute_path(frame),
+    rb_profile_frame_base_label(frame),
+    rb_profile_frame_label(the_location->iseq),
+    INT2FIX(the_location->line_number),
+    rb_profile_frame_path(frame),
+    qualified_method_name_for_location(the_location),
+    debug_raw_location(the_location)
+  );
+}
+
+static VALUE qualified_method_name_for_location(raw_location *the_location) {
+  VALUE frame = frame_from_location(the_location);
   VALUE qualified_method_name = Qnil;
 
-  if (is_self_class_singleton(the_location)) {
+  if (is_defined_class_a_refinement(the_location)) {
+    qualified_method_name = backtracie_refinement_name(the_location);
+    rb_str_concat(qualified_method_name, rb_str_new2("#"));
+    rb_str_concat(qualified_method_name, rb_profile_frame_label(frame));
+  } else if (is_self_class_singleton(the_location)) {
     qualified_method_name = qualified_method_name_from_self(the_location);
   } else if (the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD) {
     qualified_method_name = qualified_method_name_for_block(the_location);
@@ -173,15 +192,7 @@ static VALUE ruby_frame_to_location(raw_location *the_location) {
     }
   }
 
-  return new_location(
-    rb_profile_frame_absolute_path(frame),
-    rb_profile_frame_base_label(frame),
-    rb_profile_frame_label(the_location->iseq),
-    INT2FIX(the_location->line_number),
-    rb_profile_frame_path(frame),
-    qualified_method_name,
-    debug_raw_location(the_location)
-  );
+  return qualified_method_name;
 }
 
 static VALUE cfunc_frame_to_location(raw_location *the_location, raw_location *last_ruby_location) {
@@ -271,26 +282,33 @@ static bool is_self_class_singleton(raw_location *the_location) {
   return the_location->self != Qnil && FL_TEST(rb_class_of(the_location->self), FL_SINGLETON);
 }
 
+static bool is_defined_class_a_refinement(raw_location *the_location) {
+  VALUE defined_class = backtracie_defined_class(the_location);
+
+  return defined_class != Qnil && FL_TEST(rb_class_of(defined_class), RMODULE_IS_REFINEMENT);
+}
+
 static VALUE debug_raw_location(raw_location *the_location) {
   VALUE self_class = SAFE_NAVIGATION(rb_class_of, the_location->self);
 
   VALUE arguments[] = {
-    ID2SYM(rb_intern("ruby_frame?"))  ,         /* => */ to_boolean(the_location->is_ruby_frame),
-    ID2SYM(rb_intern("should_use_iseq")),       /* => */ to_boolean(the_location->should_use_iseq),
-    ID2SYM(rb_intern("should_use_cfunc_name")), /* => */ to_boolean(the_location->should_use_cfunc_name),
-    ID2SYM(rb_intern("vm_method_type")),        /* => */ INT2FIX(the_location->vm_method_type),
-    ID2SYM(rb_intern("line_number")),           /* => */ INT2FIX(the_location->line_number),
-    ID2SYM(rb_intern("called_id")),             /* => */ backtracie_called_id(the_location),
-    ID2SYM(rb_intern("defined_class")),         /* => */ backtracie_defined_class(the_location),
-    ID2SYM(rb_intern("self_class")),            /* => */ self_class,
-    ID2SYM(rb_intern("real_class")),            /* => */ SAFE_NAVIGATION(rb_class_real, self_class),
-    ID2SYM(rb_intern("self")),                  /* => */ the_location->self,
-    ID2SYM(rb_intern("self_class_singleton?")), /* => */ to_boolean(is_self_class_singleton(the_location)),
-    ID2SYM(rb_intern("iseq_is_block?")),        /* => */ to_boolean(backtracie_iseq_is_block(the_location)),
-    ID2SYM(rb_intern("iseq_is_eval?")),         /* => */ to_boolean(backtracie_iseq_is_eval(the_location)),
-    ID2SYM(rb_intern("cfunc_name")),            /* => */ the_location->cfunc_name,
-    ID2SYM(rb_intern("iseq")),                  /* => */ debug_frame(the_location->iseq),
-    ID2SYM(rb_intern("callable_method_entry")), /* => */ debug_frame(the_location->callable_method_entry)
+    ID2SYM(rb_intern("ruby_frame?"))  ,             /* => */ to_boolean(the_location->is_ruby_frame),
+    ID2SYM(rb_intern("should_use_iseq")),           /* => */ to_boolean(the_location->should_use_iseq),
+    ID2SYM(rb_intern("should_use_cfunc_name")),     /* => */ to_boolean(the_location->should_use_cfunc_name),
+    ID2SYM(rb_intern("vm_method_type")),            /* => */ INT2FIX(the_location->vm_method_type),
+    ID2SYM(rb_intern("line_number")),               /* => */ INT2FIX(the_location->line_number),
+    ID2SYM(rb_intern("called_id")),                 /* => */ backtracie_called_id(the_location),
+    ID2SYM(rb_intern("defined_class")),             /* => */ backtracie_defined_class(the_location),
+    ID2SYM(rb_intern("defined_class_refinement?")), /* => */ to_boolean(is_defined_class_a_refinement(the_location)),
+    ID2SYM(rb_intern("self_class")),                /* => */ self_class,
+    ID2SYM(rb_intern("real_class")),                /* => */ SAFE_NAVIGATION(rb_class_real, self_class),
+    ID2SYM(rb_intern("self")),                      /* => */ the_location->self,
+    ID2SYM(rb_intern("self_class_singleton?")),     /* => */ to_boolean(is_self_class_singleton(the_location)),
+    ID2SYM(rb_intern("iseq_is_block?")),            /* => */ to_boolean(backtracie_iseq_is_block(the_location)),
+    ID2SYM(rb_intern("iseq_is_eval?")),             /* => */ to_boolean(backtracie_iseq_is_eval(the_location)),
+    ID2SYM(rb_intern("cfunc_name")),                /* => */ the_location->cfunc_name,
+    ID2SYM(rb_intern("iseq")),                      /* => */ debug_frame(the_location->iseq),
+    ID2SYM(rb_intern("callable_method_entry")),     /* => */ debug_frame(the_location->callable_method_entry)
   };
 
   VALUE debug_hash = rb_hash_new();

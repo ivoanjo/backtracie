@@ -137,6 +137,7 @@ VALUE backtracie_defined_class(raw_location *the_location);
 VALUE backtracie_rb_vm_top_self();
 bool backtracie_iseq_is_block(raw_location *the_location);
 bool backtracie_iseq_is_eval(raw_location *the_location);
+VALUE backtracie_refinement_name(raw_location *the_location);
 
   #ifdef PRE_MJIT_RUBY
     int backtracie_profile_frames_from_ruby_locations(VALUE ruby_locations_array, raw_location *raw_locations);
