@@ -396,6 +396,28 @@ RSpec.describe Backtracie do
       end
     end
 
+    context "when a method defined in an object's singleton class" do
+      let(:the_singleton_class) {
+        Object.new.singleton_class.tap { |it|
+          def it.test_method
+            yield
+          end
+        }
+      }
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [the_singleton_class.test_method { described_class.backtrace_locations(Thread.current) }, the_singleton_class.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it nil, :"on ruby 2.6 and above" do
+        expect(backtracie_stack[2].qualified_method_name).to eq "Class$singleton.test_method"
+      end
+    end
+
     context "when first argument is a subclass of thread" do
       let(:thread_subclass) { Class.new(Thread) }
       let(:backtracie_stack) { thread_subclass.new { described_class.backtrace_locations(Thread.current) }.value }

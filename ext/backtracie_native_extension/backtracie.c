@@ -259,7 +259,13 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
       // e.g. Kernel.puts or BasicObject.name. In this case, Ruby already sets the name
       // correctly, so we just delegate.
       if (the_class == rb_cModule || the_class == rb_cClass) {
-        return SAFE_NAVIGATION(backtracie_rb_profile_frame_qualified_method_name, the_location->callable_method_entry);
+        // Is the class/module is anonymous?
+        if (rb_mod_name(the_location->self) == Qnil) {
+          rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
+          rb_str_concat(name, rb_str_new2("$singleton."));
+        } else {
+          return SAFE_NAVIGATION(backtracie_rb_profile_frame_qualified_method_name, the_location->callable_method_entry);
+        }
       } else {
         rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
         rb_str_concat(name, rb_str_new2("$singleton#"));
