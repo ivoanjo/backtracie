@@ -248,6 +248,7 @@ static VALUE qualified_method_name_for_block(raw_location *the_location) {
   rb_str_concat(name, is_singleton_method ? rb_str_new2(".") : rb_str_new2("#"));
   rb_str_concat(name, rb_sym2str(method_name));
 
+  // Note: Not sure if a method type with VM_METHOD_TYPE_BMETHOD can ever have an iseq that's not a block...
   if (backtracie_iseq_is_block(the_location)) rb_str_concat(name, rb_str_new2("{block}"));
 
   return name;
