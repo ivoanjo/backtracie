@@ -577,4 +577,9 @@ VALUE backported_rb_profile_frame_method_name(VALUE frame) {
   return Qnil;
 }
 
+VALUE backtracie_refinement_name(raw_location *the_location) {
+  // Not available on PRE_MJIT_RUBY
+  return Qnil;
+}
+
 #endif // ifdef PRE_MJIT_RUBY
