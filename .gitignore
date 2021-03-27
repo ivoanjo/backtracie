@@ -26,8 +26,8 @@
 
 gems.locked
 Gemfile.lock
-gems-*.rb.lock
-gems-*.rb
+.gems-*.rb.lock
+.gems-*.rb
 
 *.o
 *.so

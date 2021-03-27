@@ -9,7 +9,7 @@ services:
     environment:
       - RSPEC_PROGRESS=true
     command:
-      bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.2:
     image: ruby:2.2
     volumes:
@@ -18,7 +18,7 @@ services:
     environment:
       - RSPEC_PROGRESS=true
     command:
-      bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.3:
     image: ruby:2.3
     volumes:
@@ -27,7 +27,7 @@ services:
     environment:
       - RSPEC_PROGRESS=true
     command:
-      bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.4:
     image: ruby:2.4
     volumes:
@@ -36,7 +36,7 @@ services:
     environment:
       - RSPEC_PROGRESS=true
     command:
-      bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.5:
     image: ruby:2.5
     volumes:
@@ -45,7 +45,7 @@ services:
     environment:
       - RSPEC_PROGRESS=true
     command:
-      bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.6:
     image: ruby:2.6
     volumes:
@@ -54,7 +54,7 @@ services:
     environment:
       - RSPEC_PROGRESS=true
     command:
-      bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-2.7:
     image: ruby:2.7
     volumes:
@@ -63,7 +63,7 @@ services:
     environment:
       - RSPEC_PROGRESS=true
     command:
-      bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
   ruby-3.0:
     image: ruby:3.0
     volumes:
@@ -72,7 +72,7 @@ services:
     environment:
       - RSPEC_PROGRESS=true
     command:
-      bash -c 'export BUNDLE_GEMFILE=gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
 
 volumes:
   bundle-2.1:
