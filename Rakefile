@@ -29,8 +29,7 @@ RSpec::Core::RakeTask.new(:spec) do |task|
   # This hack allows easily passing arguments to rspec, e.g. doing
   # bundle exec rake spec -- ./spec/unit/backtracie_spec.rb:123
   if ARGV.include?("--")
-    arguments = ARGV[ARGV.index("--")..-1]
-    puts "opts: #{arguments}"
+    arguments = ARGV[(ARGV.index("--") + 1)..-1]
     task.rspec_opts = arguments.join(" ")
   end
 
