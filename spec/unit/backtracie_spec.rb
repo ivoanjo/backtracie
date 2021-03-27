@@ -477,6 +477,32 @@ RSpec.describe Backtracie do
       end
     end
 
+    context "when sampling an eval triggered with :send" do
+      class EvalTriggeredWithSend
+        def test_method
+          yield
+        end
+
+        def trigger_eval(&test_block)
+          send(:eval, "test_method(&test_block)")
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [EvalTriggeredWithSend.new.trigger_eval { described_class.backtrace_locations(Thread.current) }, EvalTriggeredWithSend.new.trigger_eval { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it nil, :"on ruby 2.6 and above" do
+        # The 3 here is expected, since we're testing the eval frame (which calls the test_method) and
+        # not the test_method itself
+        expect(backtracie_stack[3].qualified_method_name).to eq "EvalTriggeredWithSend#trigger_eval{block}"
+      end
+    end
+
     context "when first argument is a subclass of thread" do
       let(:thread_subclass) { Class.new(Thread) }
       let(:backtracie_stack) { thread_subclass.new { described_class.backtrace_locations(Thread.current) }.value }

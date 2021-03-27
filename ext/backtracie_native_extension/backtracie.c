@@ -178,10 +178,9 @@ static VALUE qualified_method_name_for_location(raw_location *the_location) {
     qualified_method_name = backtracie_refinement_name(the_location);
     rb_str_concat(qualified_method_name, rb_str_new2("#"));
     rb_str_concat(qualified_method_name, rb_profile_frame_label(frame));
-    if (backtracie_iseq_is_block(the_location)) rb_str_concat(qualified_method_name, rb_str_new2("{block}"));
   } else if (is_self_class_singleton(the_location)) {
     qualified_method_name = qualified_method_name_from_self(the_location);
-  } else if (the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD) {
+  } else if (backtracie_iseq_is_block(the_location) || backtracie_iseq_is_eval(the_location)) {
     qualified_method_name = qualified_method_name_for_block(the_location);
   } else if (defined_class != Qnil && rb_mod_name(defined_class) == Qnil) {
     // Instance of an anonymous class. Let's find it a name
@@ -201,10 +200,11 @@ static VALUE qualified_method_name_for_location(raw_location *the_location) {
 
     if (qualified_method_name == Qnil) {
       qualified_method_name = qualified_method_name_from_self(the_location);
-    } else if (backtracie_iseq_is_block(the_location)) {
-      // We use the class and method name from the regular MRI API, but append the extra block label
-      rb_str_concat(qualified_method_name, rb_str_new2("{block}"));
     }
+  }
+
+  if (backtracie_iseq_is_block(the_location) || backtracie_iseq_is_eval(the_location)) {
+    rb_str_concat(qualified_method_name, rb_str_new2("{block}"));
   }
 
   return qualified_method_name;
@@ -247,9 +247,6 @@ static VALUE qualified_method_name_for_block(raw_location *the_location) {
   rb_str_concat(name, class_name);
   rb_str_concat(name, is_singleton_method ? rb_str_new2(".") : rb_str_new2("#"));
   rb_str_concat(name, rb_sym2str(method_name));
-
-  // Note: Not sure if a method type with VM_METHOD_TYPE_BMETHOD can ever have an iseq that's not a block...
-  if (backtracie_iseq_is_block(the_location)) rb_str_concat(name, rb_str_new2("{block}"));
 
   return name;
 }
@@ -294,7 +291,7 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
   }
 
   if (backtracie_iseq_is_block(the_location) || backtracie_iseq_is_eval(the_location)) {
-    rb_str_concat(name, rb_str_new2("{block}"));
+    // Nothing to do, {block} will be appended in qualified_method_name_for_location which called us
   } else {
     rb_str_concat(name, rb_profile_frame_base_label(frame_from_location(the_location)));
   }
