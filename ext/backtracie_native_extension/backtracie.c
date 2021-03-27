@@ -178,9 +178,7 @@ static VALUE qualified_method_name_for_location(raw_location *the_location) {
     qualified_method_name = backtracie_refinement_name(the_location);
     rb_str_concat(qualified_method_name, rb_str_new2("#"));
     rb_str_concat(qualified_method_name, rb_profile_frame_label(frame));
-    if (backtracie_iseq_is_block(the_location)) {
-      rb_str_concat(qualified_method_name, rb_str_new2("{block}"));
-    }
+    if (backtracie_iseq_is_block(the_location)) rb_str_concat(qualified_method_name, rb_str_new2("{block}"));
   } else if (is_self_class_singleton(the_location)) {
     qualified_method_name = qualified_method_name_from_self(the_location);
   } else if (the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD) {
@@ -249,6 +247,8 @@ static VALUE qualified_method_name_for_block(raw_location *the_location) {
   rb_str_concat(name, class_name);
   rb_str_concat(name, is_singleton_method ? rb_str_new2(".") : rb_str_new2("#"));
   rb_str_concat(name, rb_sym2str(method_name));
+
+  if (backtracie_iseq_is_block(the_location)) rb_str_concat(name, rb_str_new2("{block}"));
 
   return name;
 }

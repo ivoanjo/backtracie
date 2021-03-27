@@ -194,8 +194,16 @@ class ClassM
   end
 end
 
+ClassN = Class.new do
+  define_method(:hello) do
+    1.times {
+      ClassM.new.hello
+    }
+  end
+end
+
 def top_level_hello
-  ClassM.new.hello
+  ClassN.new.hello
 end
 
 SAMPLE_BACKGROUND_THREAD = Thread.new do

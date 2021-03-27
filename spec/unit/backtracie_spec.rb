@@ -144,7 +144,9 @@ RSpec.describe Backtracie do
             "ClassF#hello{block}",
             "Integer#times",
             "ClassF#hello",
-            "ClassI#hello",
+            # {block} here is not really want we want if given the choice, see
+            # the "when sampling a method defined using define_method" test for details
+            "ClassI#hello{block}",
             "Class$singleton.hello",
             "Object$anonymous#hello",
             "Module$anonymous.hello",
@@ -163,6 +165,7 @@ RSpec.describe Backtracie do
             "ClassL\#{block}",
             "Kernel#eval",
             "ClassM#hello",
+            "ClassN#hello{block}",
             "Object#top_level_hello",
             "Object$<main>\#{block}",
             "Kernel#eval",
@@ -186,8 +189,10 @@ RSpec.describe Backtracie do
 
     context "when sampling a method defined using define_method" do
       class ClassWithMethodDefinedUsingDefinedMethod
-        define_method(:test_method) do |&block|
-          block.call
+        tap do
+          define_method(:test_method) do |&block|
+            block.call
+          end
         end
       end
 
@@ -201,12 +206,42 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it "includes the class name in the qualified_method_name of a test_method call frame", :"on ruby 2.6 and above" do
-        expect(backtracie_stack[2].qualified_method_name).to start_with(ClassWithMethodDefinedUsingDefinedMethod.name)
+      it "sets the qualified_method_name to include the class name and test_method{block}", :"on ruby 2.6 and above" do
+        # This is not a mistake, although it's a bit unfortunate. I'd expect that, as far as a stack trace goes,
+        # using `def test_method` or `define_method :test_method` goes would both result in `ClassName#test_method`, without `{block}`
+        # as a suffix.
+        #
+        # But, as far as I could see, the `define_method` option never internally sheds its state as a block, so we can't really
+        # distinguish between "this is a method defined from a block" and "this is a block inside a method".
+        #
+        # To further drive the point -- and my experiments -- home, I've added the `tap do ... end` which means that the block in the
+        # `define_method` is a second-level block, which makes the resulting Backtracie::Location EXACTLY the same as in
+        # the other test -- "when sampling a block inside a method defined using define_method" below.
+        #
+        # So TL;DR, `def test_method` or `define_method :test_method` will show up differently in a stack trace :(
+        expect(backtracie_stack[2].qualified_method_name).to eq "ClassWithMethodDefinedUsingDefinedMethod#test_method{block}"
+      end
+    end
+
+    context "when sampling a block inside a method defined using define_method" do
+      class ClassWithBlockInsideMethodDefinedUsingDefinedMethod
+        define_method(:test_method) do |&block|
+          [nil].map { block.call }.first
+        end
       end
 
-      it "includes the method name in the qualified_method_name of a test_method call frame", :"on ruby 2.6 and above" do
-        expect(backtracie_stack[2].qualified_method_name).to end_with("test_method")
+      let(:test_object) { ClassWithBlockInsideMethodDefinedUsingDefinedMethod.new }
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_object.test_method { described_class.backtrace_locations(Thread.current) }, test_object.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it nil, :"on ruby 2.6 and above" do
+        expect(backtracie_stack[2].qualified_method_name).to eq "ClassWithBlockInsideMethodDefinedUsingDefinedMethod#test_method{block}"
       end
     end
 
