@@ -55,7 +55,7 @@ module BetterBacktrace
     end
   end
 
-  TRACEPOINT.enable
+  TRACEPOINT.enable if ENV["BACKTRACIE_BETTER_BACKTRACE"] == "true"
 
   def self.better_backtrace_locations(thread = Thread.current)
     TRACEPOINT.disable do
