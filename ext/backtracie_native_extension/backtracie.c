@@ -171,6 +171,7 @@ static VALUE ruby_frame_to_location(raw_location *the_location) {
 
 static VALUE qualified_method_name_for_location(raw_location *the_location) {
   VALUE frame = frame_from_location(the_location);
+  VALUE defined_class = backtracie_defined_class(the_location);
   VALUE qualified_method_name = Qnil;
 
   if (is_defined_class_a_refinement(the_location)) {
@@ -184,6 +185,19 @@ static VALUE qualified_method_name_for_location(raw_location *the_location) {
     qualified_method_name = qualified_method_name_from_self(the_location);
   } else if (the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD) {
     qualified_method_name = qualified_method_name_for_block(the_location);
+  } else if (defined_class != Qnil && rb_mod_name(defined_class) == Qnil) {
+    // Instance of an anonymous class. Let's find it a name
+    VALUE superclass = defined_class;
+    VALUE superclass_name = Qnil;
+    do {
+      superclass = RCLASS_SUPER(superclass);
+      superclass_name = rb_mod_name(superclass);
+    } while (superclass_name == Qnil);
+
+    qualified_method_name = rb_str_new2("");
+    rb_str_concat(qualified_method_name, superclass_name);
+    rb_str_concat(qualified_method_name, rb_str_new2("$anonymous#"));
+    rb_str_concat(qualified_method_name, rb_profile_frame_base_label(frame_from_location(the_location)));
   } else {
     qualified_method_name = backtracie_rb_profile_frame_qualified_method_name(frame);
 
