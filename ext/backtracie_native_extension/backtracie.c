@@ -319,7 +319,9 @@ static VALUE debug_raw_location(raw_location *the_location) {
     ID2SYM(rb_intern("vm_method_type")),            /* => */ INT2FIX(the_location->vm_method_type),
     ID2SYM(rb_intern("line_number")),               /* => */ INT2FIX(the_location->line_number),
     ID2SYM(rb_intern("called_id")),                 /* => */ backtracie_called_id(the_location),
-    ID2SYM(rb_intern("defined_class")),             /* => */ backtracie_defined_class(the_location),
+    // TODO: On Ruby < 3.0, running be pry -e 'require "backtracie"; Backtracie.caller_locations' with this being
+    // exposed causes a VM segfault inside the pretty printing code
+    // ID2SYM(rb_intern("defined_class")),             /* => */ backtracie_defined_class(the_location),
     ID2SYM(rb_intern("defined_class_refinement?")), /* => */ to_boolean(is_defined_class_a_refinement(the_location)),
     ID2SYM(rb_intern("self_class")),                /* => */ self_class,
     ID2SYM(rb_intern("real_class")),                /* => */ SAFE_NAVIGATION(rb_class_real, self_class),
