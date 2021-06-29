@@ -6,7 +6,7 @@
 
 A Ruby gem for beautiful backtraces.
 
-Aims to offer alternatives to `Thread#backtrace`, `Thread#backtrace_locations`, `Kernel#caller` and `Kernel#caller_locations` with similar performance, but with better metadata (such as class names).
+Aims to offer alternatives to `Thread#backtrace`, `Thread#backtrace_locations`, `Kernel#caller` and `Kernel#caller_locations` with similar (or better!?) performance, but with better metadata (such as class names).
 
 image:https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg["Contributor Covenant", link="CODE_OF_CONDUCT.adoc"]
 image:https://badge.fury.io/rb/backtracie.svg["Gem Version", link="https://badge.fury.io/rb/backtracie"]
@@ -44,7 +44,75 @@ This gem is versioned according to http://semver.org/spec/v2.0.0.html[Semantic V
 
 == Usage
 
-TODO
+Currently, `backtracie` exposes two APIs:
+
+* `Backtracie.backtrace_locations(thread)`: Returns an array representing the backtrace of the given `thread`. Similar to `Thread#backtrace_locations`.
+* `Backtracie.caller_locations`: Returns an array representing the backtrace of the current thread, starting from the caller of the current method. the Similar to `Kernel#caller_locations`.
+
+These methods, inspired by their original Ruby counterparts, return arrays of `Backtracie::Location` items. These items return A LOT more information than Ruby usually exposes:
+
+[source,ruby]
+----
+$ bundle exec pry
+[1] pry(main)> require 'backtracie'
+
+[2] pry(main)> class Example
+[2] pry(main)*   def foo
+[2] pry(main)*     bar
+[2] pry(main)*   end
+[2] pry(main)*   def bar
+[2] pry(main)*     Backtracie.caller_locations.first
+[2] pry(main)*   end
+[2] pry(main)* end
+
+[3] pry(main)> Example.new.foo
+=> #<Backtracie::Location:0x0000561b236c9208
+ @absolute_path="(pry)",
+ @base_label="foo",
+ @debug=
+  {:ruby_frame?=>true,
+   :should_use_iseq=>false,
+   :should_use_cfunc_name=>false,
+   :vm_method_type=>0,
+   :line_number=>3,
+   :called_id=>:foo,
+   :defined_class_refinement?=>false,
+   :self_class=>Example,
+   :real_class=>Example,
+   :self=>#<Example:0x0000561b236f3a08>,
+   :self_class_singleton?=>false,
+   :iseq_is_block?=>false,
+   :iseq_is_eval?=>false,
+   :cfunc_name=>nil,
+   :iseq=>
+    {:path=>"(pry)",
+     :absolute_path=>"(pry)",
+     :label=>"foo",
+     :base_label=>"foo",
+     :full_label=>"foo",
+     :first_lineno=>2,
+     :classpath=>nil,
+     :singleton_method_p=>false,
+     :method_name=>"foo",
+     :qualified_method_name=>"foo"},
+   :callable_method_entry=>
+    {:path=>"(pry)",
+     :absolute_path=>"(pry)",
+     :label=>"foo",
+     :base_label=>"foo",
+     :full_label=>"Example#foo",
+     :first_lineno=>2,
+     :classpath=>"Example",
+     :singleton_method_p=>false,
+     :method_name=>"foo",
+     :qualified_method_name=>"Example#foo"}},
+ @label="foo",
+ @lineno=3,
+ @path="(pry)",
+ @qualified_method_name="Example#foo">
+----
+
+This information can be used to to create much richer stack traces than the ones exposed by Ruby, including details such as class and module names, if methods are singletons, etc.
 
 == Development
 
