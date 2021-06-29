@@ -45,4 +45,5 @@ Gem::Specification.new do |spec|
       }
   end
   spec.require_paths = ["lib", "ext"]
+  spec.extensions = ["ext/backtracie_native_extension/extconf.rb"]
 end
