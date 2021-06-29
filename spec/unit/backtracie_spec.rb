@@ -477,6 +477,32 @@ RSpec.describe Backtracie do
       end
     end
 
+    context "when a sampling a block inside an instance of an anonymous subclass of some class" do
+      let(:object) {
+        c1 = Class.new(Array)
+        c2 = Class.new(c1) do
+          def test_method
+            [nil].map { yield }.first
+          end
+        end
+        c2.new
+      }
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [object.test_method { described_class.backtrace_locations(Thread.current) }, object.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it nil, :"on ruby 2.6 and above" do
+        pending("TODO")
+
+        expect(backtracie_stack[2].qualified_method_name).to eq "Array$anonymous#test_method{block}"
+      end
+    end
+
     context "when sampling an eval triggered with :send" do
       class EvalTriggeredWithSend
         def test_method
