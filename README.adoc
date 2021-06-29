@@ -47,7 +47,7 @@ This gem is versioned according to http://semver.org/spec/v2.0.0.html[Semantic V
 Currently, `backtracie` exposes two APIs:
 
 * `Backtracie.backtrace_locations(thread)`: Returns an array representing the backtrace of the given `thread`. Similar to `Thread#backtrace_locations`.
-* `Backtracie.caller_locations`: Returns an array representing the backtrace of the current thread, starting from the caller of the current method. the Similar to `Kernel#caller_locations`.
+* `Backtracie.caller_locations`: Returns an array representing the backtrace of the current thread, starting from the caller of the current method. Similar to `Kernel#caller_locations`.
 
 These methods, inspired by their original Ruby counterparts, return arrays of `Backtracie::Location` items. These items return A LOT more information than Ruby usually exposes:
 
