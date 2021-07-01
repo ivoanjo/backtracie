@@ -44,13 +44,9 @@ if RUBY_VERSION < "3"
   $defs << "-DCFUNC_FRAMES_BACKPORT_NEEDED"
 end
 
-# Backport https://github.com/ruby/ruby/pull/3084 (present in 2.7 and 3.0) to Ruby 2.6
+# Backport https://github.com/ruby/ruby/pull/3084 (present in 2.7 and 3.0) to Ruby <= 2.6
 if RUBY_VERSION.start_with?("2.6")
   $defs << "-DCLASSPATH_BACKPORT_NEEDED"
-end
-
-if RUBY_VERSION < "2.6"
-  $defs << "-DPRE_MJIT_RUBY"
 end
 
 create_header
