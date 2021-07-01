@@ -539,7 +539,7 @@ RSpec.describe Backtracie do
     end
 
     context "when sampling a dead thread" do
-      let(:dead_thread) { Thread.new { }.tap { |it| it.join } }
+      let(:dead_thread) { Thread.new {}.tap { |it| it.join } }
 
       it "returns the same as Ruby (nil)" do
         result = described_class.backtrace_locations(dead_thread)

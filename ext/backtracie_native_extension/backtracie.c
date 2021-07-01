@@ -98,6 +98,7 @@ static VALUE collect_backtrace_locations(VALUE self, VALUE thread, int ignored_s
     }
 
     VALUE locations_array = rb_funcall(thread, backtrace_locations_id, 0);
+    if (locations_array == Qnil) return Qnil;
     stack_depth = backtracie_profile_frames_from_ruby_locations(locations_array, raw_locations);
   #endif
 
