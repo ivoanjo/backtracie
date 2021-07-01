@@ -238,12 +238,20 @@ int backtracie_rb_profile_frames(int limit, raw_location *raw_locations) {
   return backtracie_rb_profile_frames_for_execution_context(GET_EC(), limit, raw_locations);
 }
 
-int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_location *raw_locations) {
+bool backtracie_is_thread_alive(VALUE thread) {
   // In here we're assuming that what we got is really a Thread or its subclass. This assumption NEEDS to be verified by
   // the caller, otherwise I see a segfault in your future.
   rb_thread_t *thread_pointer = (rb_thread_t*) DATA_PTR(thread);
 
-  if (thread_pointer->to_kill || thread_pointer->status == THREAD_KILLED) return Qnil;
+  return !(thread_pointer->to_kill || thread_pointer->status == THREAD_KILLED);
+}
+
+int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_location *raw_locations) {
+  if (!backtracie_is_thread_alive(thread)) return 0;
+
+  // In here we're assuming that what we got is really a Thread or its subclass. This assumption NEEDS to be verified by
+  // the caller, otherwise I see a segfault in your future.
+  rb_thread_t *thread_pointer = (rb_thread_t*) DATA_PTR(thread);
 
   return backtracie_rb_profile_frames_for_execution_context(thread_pointer->ec, limit, raw_locations);
 }

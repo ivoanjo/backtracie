@@ -85,6 +85,7 @@ static VALUE collect_backtrace_locations(VALUE self, VALUE thread, int ignored_s
       stack_depth = backtracie_rb_profile_frames(MAX_STACK_DEPTH, raw_locations);
     } else {
       stack_depth = backtracie_rb_profile_frames_for_thread(thread, MAX_STACK_DEPTH, raw_locations);
+      if (stack_depth == 0 && !backtracie_is_thread_alive(thread)) return Qnil;
     }
   #else
     VALUE current_thread = rb_funcall(rb_cThread, current_id, 0);

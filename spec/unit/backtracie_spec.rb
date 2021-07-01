@@ -537,5 +537,16 @@ RSpec.describe Backtracie do
         expect(backtracie_stack).to all(be_a(Backtracie::Location))
       end
     end
+
+    context "when sampling a dead thread" do
+      let(:dead_thread) { Thread.new { }.tap { |it| it.join } }
+
+      it "returns the same as Ruby (nil)" do
+        result = described_class.backtrace_locations(dead_thread)
+
+        expect(result).to eq dead_thread.backtrace_locations
+        expect(result).to be nil
+      end
+    end
   end
 end
