@@ -123,6 +123,13 @@
 #define rb_execution_context_t rb_thread_t
 #endif
 
+#ifdef PRE_VM_ENV_RENAMES
+#define VM_ENV_LOCAL_P VM_EP_LEP_P
+#define VM_ENV_PREV_EP VM_EP_PREV_EP
+#define VM_ENV_DATA_INDEX_ME_CREF -1
+#define VM_FRAME_RUBYFRAME_P(cfp) RUBY_VM_NORMAL_ISEQ_P(cfp->iseq)
+#endif
+
 /**********************************************************************
   vm_backtrace.c -
   $Author: ko1 $
@@ -475,7 +482,6 @@ backported_rb_profile_frame_qualified_method_name(VALUE frame)
   Copyright (C) 2007 Koichi Sasada
 **********************************************************************/
 
-PUREFUNC(static rb_callable_method_entry_t *check_method_entry(VALUE obj, int can_be_svar));
 static rb_callable_method_entry_t *
 check_method_entry(VALUE obj, int can_be_svar)
 {

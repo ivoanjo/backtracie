@@ -59,6 +59,10 @@ if RUBY_VERSION < "2.5"
   $CFLAGS << " " << "-Wno-attributes" # Silence a few warnings that we can't do anything about
 end
 
+if RUBY_VERSION < "2.4"
+  $CFLAGS << " " << "-DPRE_VM_ENV_RENAMES" # Flag that it's a really old Ruby, and a few constants were since renamed
+end
+
 create_header
 
 if RUBY_VERSION < "2.6"
