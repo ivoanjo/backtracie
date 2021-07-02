@@ -50,10 +50,10 @@ static bool is_self_class_singleton(raw_location *the_location);
 static bool is_defined_class_a_refinement(raw_location *the_location);
 static VALUE debug_raw_location(raw_location *the_location);
 static VALUE debug_frame(VALUE frame);
-static inline VALUE to_boolean(bool value) ;
+static inline VALUE to_boolean(bool value);
 
 void Init_backtracie_native_extension(void) {
-  main_object_instance = backtracie_rb_vm_top_self();
+  main_object_instance = rb_funcall(rb_const_get(rb_cObject, rb_intern("TOPLEVEL_BINDING")), rb_intern("eval"), 1, rb_str_new2("self"));
   ensure_object_is_thread_id = rb_intern("ensure_object_is_thread");
   to_s_id = rb_intern("to_s");
 

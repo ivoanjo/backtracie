@@ -49,8 +49,14 @@ if RUBY_VERSION.start_with?("2.6")
   $defs << "-DCLASSPATH_BACKPORT_NEEDED"
 end
 
+# Older Rubies don't have the MJIT header, see below for details
 if RUBY_VERSION < "2.6"
   $defs << "-DPRE_MJIT_RUBY"
+end
+
+if RUBY_VERSION < "2.5"
+  $CFLAGS << " " << "-DPRE_EXECUTION_CONTEXT" # Flag that there's no execution context, we need to use threads instead
+  $CFLAGS << " " << "-Wno-attributes" # Silence a few warnings that we can't do anything about
 end
 
 create_header

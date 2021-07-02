@@ -90,9 +90,10 @@
 **********************************************************************/
 
   #ifdef PRE_MJIT_RUBY
+    #include <stdbool.h>
     #include <vm_core.h>
     #include <method.h>
-  #elif
+  #else
   #ifndef RUBY_MJIT_HEADER_INCLUDED
     typedef enum {
       VM_METHOD_TYPE_ISEQ,      /*!< Ruby method */
@@ -132,7 +133,6 @@ int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_locatio
 bool backtracie_is_thread_alive(VALUE thread);
 VALUE backtracie_called_id(raw_location *the_location);
 VALUE backtracie_defined_class(raw_location *the_location);
-VALUE backtracie_rb_vm_top_self();
 bool backtracie_iseq_is_block(raw_location *the_location);
 bool backtracie_iseq_is_eval(raw_location *the_location);
 VALUE backtracie_refinement_name(raw_location *the_location);

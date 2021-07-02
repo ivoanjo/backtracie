@@ -118,6 +118,11 @@
 #include <regenc.h>
 #endif
 
+#ifdef PRE_EXECUTION_CONTEXT
+// The thread and its execution context were separated on Ruby 2.5; prior to that, everything was part of the thread
+#define rb_execution_context_t rb_thread_t
+#endif
+
 /**********************************************************************
   vm_backtrace.c -
   $Author: ko1 $
@@ -238,7 +243,12 @@ static int backtracie_rb_profile_frames_for_execution_context(
 }
 
 int backtracie_rb_profile_frames(int limit, raw_location *raw_locations) {
-  return backtracie_rb_profile_frames_for_execution_context(GET_EC(), limit, raw_locations);
+  #ifndef PRE_EXECUTION_CONTEXT
+    return backtracie_rb_profile_frames_for_execution_context(GET_EC(), limit, raw_locations);
+  #else
+    // FIXME: Figure out how to make GET_EC (GET_THREAD) work for Ruby <= 2.4
+    return 0;
+  #endif
 }
 
 bool backtracie_is_thread_alive(VALUE thread) {
@@ -256,7 +266,11 @@ int backtracie_rb_profile_frames_for_thread(VALUE thread, int limit, raw_locatio
   // the caller, otherwise I see a segfault in your future.
   rb_thread_t *thread_pointer = (rb_thread_t*) DATA_PTR(thread);
 
-  return backtracie_rb_profile_frames_for_execution_context(thread_pointer->ec, limit, raw_locations);
+  #ifndef PRE_EXECUTION_CONTEXT
+    return backtracie_rb_profile_frames_for_execution_context(thread_pointer->ec, limit, raw_locations);
+  #else
+    return backtracie_rb_profile_frames_for_execution_context(thread_pointer, limit, raw_locations);
+  #endif
 }
 
 VALUE backtracie_called_id(raw_location *the_location) {
@@ -274,10 +288,6 @@ VALUE backtracie_defined_class(raw_location *the_location) {
   return \
     ((rb_callable_method_entry_t *) the_location->callable_method_entry)
       ->defined_class;
-}
-
-VALUE backtracie_rb_vm_top_self() {
-  return GET_VM()->top_self;
 }
 
 bool backtracie_iseq_is_block(raw_location *the_location) {

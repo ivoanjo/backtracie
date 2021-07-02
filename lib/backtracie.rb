@@ -28,8 +28,17 @@ require "backtracie_native_extension"
 module Backtracie
   module_function
 
-  def caller_locations
-    Primitive.caller_locations
+  if RUBY_VERSION < "2.5"
+    def caller_locations
+      # FIXME: We're having some trouble getting the current thread on older Rubies, see the FIXME on
+      # backtracie_rb_profile_frames. A workaround is to just pass in the reference to the current thread explicitly
+      # (and slice off a few frames, since caller_locations is supposed to start from the caller of our caller)
+      backtrace_locations(Thread.current)[3..-1]
+    end
+  else
+    def caller_locations
+      Primitive.caller_locations
+    end
   end
 
   # Defined via native code only; not redirecting via Primitive to avoid an extra stack frame on the stack
