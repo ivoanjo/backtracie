@@ -255,8 +255,6 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
       it do
-        pending "Broken on Ruby < 2.6; to be investigated" if RUBY_VERSION < "2.6"
-
         expect(backtracie_stack[2].qualified_method_name).to eq "Object$<main>\#{block}"
       end
     end
