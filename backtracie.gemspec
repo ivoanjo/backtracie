@@ -46,4 +46,7 @@ Gem::Specification.new do |spec|
   end
   spec.require_paths = ["lib", "ext"]
   spec.extensions = ["ext/backtracie_native_extension/extconf.rb"]
+
+  # Enables support for Ruby 2.5 and below. Not used at all in the others.
+  spec.add_dependency "debase-ruby_core_source", "~> 0.10", ">= 0.10.12"
 end

@@ -314,8 +314,7 @@ static VALUE debug_raw_location(raw_location *the_location) {
   };
 
   VALUE debug_hash = rb_hash_new();
-  // FIXME: Hack, need to actually fix this
-  rb_hash_bulk_insert(VALUE_COUNT(arguments), arguments, debug_hash);
+  for (long unsigned int i = 0; i < (VALUE_COUNT(arguments) / 2); i++) rb_hash_aset(debug_hash, arguments[i], arguments[i+1]);
   return debug_hash;
 }
 
@@ -336,8 +335,7 @@ static VALUE debug_frame(VALUE frame) {
   };
 
   VALUE debug_hash = rb_hash_new();
-  // FIXME: Hack, need to actually fix this
-  rb_hash_bulk_insert(VALUE_COUNT(arguments), arguments, debug_hash);
+  for (long unsigned int i = 0; i < (VALUE_COUNT(arguments) / 2); i++) rb_hash_aset(debug_hash, arguments[i], arguments[i+1]);
   return debug_hash;
 }
 

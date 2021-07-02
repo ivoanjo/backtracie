@@ -104,12 +104,19 @@
 
 #include "extconf.h"
 
+#ifndef PRE_MJIT_RUBY
 #ifndef RUBY_MJIT_HEADER_INCLUDED
 #define RUBY_MJIT_HEADER_INCLUDED
 #include RUBY_MJIT_HEADER
 #endif
+#endif
 
 #include "ruby_shards.h"
+
+#ifdef PRE_MJIT_RUBY
+#include <iseq.h>
+#include <regenc.h>
+#endif
 
 /**********************************************************************
   vm_backtrace.c -
@@ -447,3 +454,56 @@ backported_rb_profile_frame_qualified_method_name(VALUE frame)
     return qualified_method_name(frame, method_name);
 }
 #endif // CLASSPATH_BACKPORT_NEEDED
+
+#ifdef PRE_MJIT_RUBY
+
+// A few extra functions copied from the Ruby sources, needed to support Ruby < 2.6
+
+/**********************************************************************
+  vm_insnhelper.c - instruction helper functions.
+  $Author$
+  Copyright (C) 2007 Koichi Sasada
+**********************************************************************/
+
+PUREFUNC(static rb_callable_method_entry_t *check_method_entry(VALUE obj, int can_be_svar));
+static rb_callable_method_entry_t *
+check_method_entry(VALUE obj, int can_be_svar)
+{
+    if (obj == Qfalse) return NULL;
+
+#if VM_CHECK_MODE > 0
+    if (!RB_TYPE_P(obj, T_IMEMO)) rb_bug("check_method_entry: unknown type: %s", rb_obj_info(obj));
+#endif
+
+    switch (imemo_type(obj)) {
+      case imemo_ment:
+  return (rb_callable_method_entry_t *)obj;
+      case imemo_cref:
+  return NULL;
+      case imemo_svar:
+  if (can_be_svar) {
+      return check_method_entry(((struct vm_svar *)obj)->cref_or_me, FALSE);
+  }
+      default:
+#if VM_CHECK_MODE > 0
+  rb_bug("check_method_entry: svar should not be there:");
+#endif
+  return NULL;
+    }
+}
+
+const rb_callable_method_entry_t *
+rb_vm_frame_method_entry(const rb_control_frame_t *cfp)
+{
+    const VALUE *ep = cfp->ep;
+    rb_callable_method_entry_t *me;
+
+    while (!VM_ENV_LOCAL_P(ep)) {
+        if ((me = check_method_entry(ep[VM_ENV_DATA_INDEX_ME_CREF], FALSE)) != NULL) return me;
+        ep = VM_ENV_PREV_EP(ep);
+    }
+
+    return check_method_entry(ep[VM_ENV_DATA_INDEX_ME_CREF], TRUE);
+}
+
+#endif

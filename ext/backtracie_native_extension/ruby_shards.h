@@ -89,6 +89,10 @@
   Copyright (C) 2009 Koichi Sasada
 **********************************************************************/
 
+  #ifdef PRE_MJIT_RUBY
+    #include <vm_core.h>
+    #include <method.h>
+  #elif
   #ifndef RUBY_MJIT_HEADER_INCLUDED
     typedef enum {
       VM_METHOD_TYPE_ISEQ,      /*!< Ruby method */
@@ -104,10 +108,7 @@
       VM_METHOD_TYPE_MISSING,   /*!< wrapper for method_missing(id) */
       VM_METHOD_TYPE_REFINED,   /*!< refinement */
     } rb_method_type_t;
-    #define VM_METHOD_TYPE_MINIMUM_BITS 4
-
-    // Needed for Ruby 2.6 as this is not defined on any public header
-    void rb_hash_bulk_insert(long, const VALUE *, VALUE);
+  #endif
   #endif
 
 // -----------------------------------------------------------------------------
@@ -119,7 +120,7 @@ typedef struct {
   // want can be found by querying the iseq, and there may not even be an callable_method_entry
   unsigned int should_use_iseq : 1;
 
-  rb_method_type_t vm_method_type : VM_METHOD_TYPE_MINIMUM_BITS;
+  rb_method_type_t vm_method_type;
   int line_number;
   VALUE iseq;
   VALUE callable_method_entry;
