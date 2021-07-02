@@ -8,9 +8,10 @@ A Ruby gem for beautiful backtraces.
 
 Aims to offer alternatives to `Thread#backtrace`, `Thread#backtrace_locations`, `Kernel#caller` and `Kernel#caller_locations` with similar (or better!?) performance, but with better metadata (such as class names).
 
-WARNING: **Currently this gem is an exploration ground for some... questionable low-level techniques.**
-**Due to the way it works, bugs can easily cause your whole Ruby VM to crash.**
-**So please take this into account if you want to use this gem for anything. But contributions and bug reports are mega welcome.**
+WARNING: **⚠️ This gem is currently an exploration ground for the use of low-level techniques to get at internal Ruby VM structures.
+          Due to the way it works, bugs can easily cause your whole Ruby VM to crash;
+          Please take this into account if you plan on using this gem.
+          Still, contributions and bug reports are mega welcome, and I hope to one day be able to remove this warning ⚠️.**
 
 image:https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg["Contributor Covenant", link="CODE_OF_CONDUCT.adoc"]
 image:https://badge.fury.io/rb/backtracie.svg["Gem Version", link="https://badge.fury.io/rb/backtracie"]
