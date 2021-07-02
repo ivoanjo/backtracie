@@ -44,29 +44,56 @@ if RUBY_VERSION < "3"
   $defs << "-DCFUNC_FRAMES_BACKPORT_NEEDED"
 end
 
-# Backport https://github.com/ruby/ruby/pull/3084 (present in 2.7 and 3.0) to Ruby 2.6
+# Backport https://github.com/ruby/ruby/pull/3084 (present in 2.7 and 3.0) to Ruby <= 2.6
 if RUBY_VERSION.start_with?("2.6")
   $defs << "-DCLASSPATH_BACKPORT_NEEDED"
 end
 
+# Older Rubies don't have the MJIT header, see below for details
 if RUBY_VERSION < "2.6"
   $defs << "-DPRE_MJIT_RUBY"
 end
 
+if RUBY_VERSION < "2.5"
+  $CFLAGS << " " << "-DPRE_EXECUTION_CONTEXT" # Flag that there's no execution context, we need to use threads instead
+  $CFLAGS << " " << "-Wno-attributes" # Silence a few warnings that we can't do anything about
+end
+
+if RUBY_VERSION < "2.4"
+  $CFLAGS << " " << "-DPRE_VM_ENV_RENAMES" # Flag that it's a really old Ruby, and a few constants were since renamed
+end
+
 create_header
 
-# The Ruby MJIT header is always (afaik?) suffixed with the exact RUBY version,
-# including patch (e.g. 2.7.2). Thus, we add to the header file a definition
-# containing the exact file, so that it can be used in a #include in the C code.
-header_contents =
-  File.read($extconf_h)
-    .sub("#endif",
-      <<~EXTCONF_H.strip
-        #define RUBY_MJIT_HEADER "rb_mjit_min_header-#{RUBY_VERSION}.h"
+if RUBY_VERSION < "2.6"
+  # Use the debase-ruby_core_source gem to get access to Ruby internal structures (no MJIT header -- the preferred
+  # option -- is available for these older Rubies)
 
-        #endif
-      EXTCONF_H
-    )
-File.open($extconf_h, "w") { |file| file.puts(header_contents) }
+  require "debase/ruby_core_source"
+  dir_config("ruby") # allow user to pass in non-standard core include directory
+  if !Debase::RubyCoreSource.create_makefile_with_core(
+    proc { ["vm_core.h", "method.h", "iseq.h", "regenc.h"].map { |it| have_header(it) }.uniq == [true] },
+    "backtracie_native_extension"
+  )
+    raise "Error during native gem setup -- `Debase::RubyCoreSource.create_makefile_with_core` failed"
+  end
 
-create_makefile "backtracie_native_extension"
+else
+  # Use MJIT header to get access to Ruby internal structures.
+
+  # The Ruby MJIT header is always (afaik?) suffixed with the exact RUBY version,
+  # including patch (e.g. 2.7.2). Thus, we add to the header file a definition
+  # containing the exact file, so that it can be used in a #include in the C code.
+  header_contents =
+    File.read($extconf_h)
+      .sub("#endif",
+        <<~EXTCONF_H.strip
+          #define RUBY_MJIT_HEADER "rb_mjit_min_header-#{RUBY_VERSION}.h"
+
+          #endif
+        EXTCONF_H
+      )
+  File.open($extconf_h, "w") { |file| file.puts(header_contents) }
+
+  create_makefile "backtracie_native_extension"
+end

@@ -109,7 +109,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[1].qualified_method_name).to eq self.class.name + "$singleton\#{block}"
       end
     end
@@ -123,7 +123,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      describe "qualified_method_name behavior", :"on ruby 2.6 and above" do
+      describe "qualified_method_name behavior" do
         let(:expected_stack) {
           [
             "ClassA#hello{block}",
@@ -206,7 +206,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it "sets the qualified_method_name to include the class name and test_method{block}", :"on ruby 2.6 and above" do
+      it "sets the qualified_method_name to include the class name and test_method{block}" do
         # This is not a mistake, although it's a bit unfortunate. I'd expect that, as far as a stack trace goes,
         # using `def test_method` or `define_method :test_method` goes would both result in `ClassName#test_method`, without `{block}`
         # as a suffix.
@@ -240,7 +240,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "ClassWithBlockInsideMethodDefinedUsingDefinedMethod#test_method{block}"
       end
     end
@@ -254,7 +254,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "Object$<main>\#{block}"
       end
     end
@@ -276,7 +276,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "Object$singleton#test_method"
       end
 
@@ -287,7 +287,7 @@ RSpec.describe Backtracie do
           singleton_object.singleton_class
         end
 
-        it nil, :"on ruby 2.6 and above" do
+        it do
           expect(backtracie_stack[2].qualified_method_name).to eq "Object$singleton#test_method"
         end
       end
@@ -310,7 +310,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "ClassWithMethod#test_method{block}"
       end
     end
@@ -332,7 +332,9 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
+        pending "Broken on Ruby < 2.6; to be investigated" if RUBY_VERSION < "2.6"
+
         expect(backtracie_stack[2].qualified_method_name).to eq "ModuleWithFunction.test_function"
       end
     end
@@ -352,7 +354,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "ClassWithMethodDirectlyDefined.test_method"
       end
     end
@@ -371,7 +373,7 @@ RSpec.describe Backtracie do
       }
 
       it "returns the same number of items as the Ruby API" do
-        pending "Unexpectedly, we're getting one more frame than the regular Ruby API. Needs investigation" unless RUBY_VERSION < "2.6"
+        pending "Unexpectedly, we're getting one more frame than the regular Ruby API. Needs investigation"
 
         expect(backtracie_stack.size).to be ruby_stack.size
       end
@@ -402,7 +404,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "Integer$refinement@TheRefinement#test_method"
       end
     end
@@ -426,7 +428,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "Integer$refinement@TheRefinementWithABlock#test_method{block}"
       end
     end
@@ -448,7 +450,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "Class$singleton.test_method"
       end
     end
@@ -472,7 +474,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         expect(backtracie_stack[2].qualified_method_name).to eq "Array$anonymous#test_method"
       end
     end
@@ -496,7 +498,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         pending("TODO")
 
         expect(backtracie_stack[2].qualified_method_name).to eq "Array$anonymous#test_method{block}"
@@ -522,7 +524,7 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
-      it nil, :"on ruby 2.6 and above" do
+      it do
         # The 3 here is expected, since we're testing the eval frame (which calls the test_method) and
         # not the test_method itself
         expect(backtracie_stack[3].qualified_method_name).to eq "EvalTriggeredWithSend#trigger_eval{block}"
