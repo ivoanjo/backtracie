@@ -215,7 +215,13 @@ static int backtracie_rb_profile_frames_for_execution_context(
 
     cme = rb_vm_frame_method_entry(cfp);
 
-    if (VM_FRAME_RUBYFRAME_P(cfp)) {
+    if (cfp->iseq && !cfp->pc) {
+      // Do nothing -- this frame should not be used
+      // Bugfix: rb_profile_frames did not do this (skip a frame when there's no pc), but backtrace_each did, and that
+      // caused the "Backtracie.backtrace_locations when sampling a map from an enumerable returns the same number of items as the Ruby API"
+      // test to fail -- Backtracie returned one more frame than Ruby. I suspect that, as usual, this is yet another case where
+      // rb_profile_frames fails us.
+    } else if (VM_FRAME_RUBYFRAME_P(cfp)) {
       raw_locations[i].is_ruby_frame = true;
       raw_locations[i].iseq = (VALUE) cfp->iseq;
 

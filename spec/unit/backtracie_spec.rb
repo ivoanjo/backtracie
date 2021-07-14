@@ -373,8 +373,6 @@ RSpec.describe Backtracie do
       }
 
       it "returns the same number of items as the Ruby API" do
-        pending "Unexpectedly, we're getting one more frame than the regular Ruby API. Needs investigation"
-
         expect(backtracie_stack.size).to be ruby_stack.size
       end
     end
