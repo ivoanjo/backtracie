@@ -314,7 +314,7 @@ static VALUE debug_raw_location(raw_location *the_location) {
   };
 
   VALUE debug_hash = rb_hash_new();
-  for (long unsigned int i = 0; i < (VALUE_COUNT(arguments) / 2); i++) rb_hash_aset(debug_hash, arguments[i], arguments[i+1]);
+  for (long unsigned int i = 0; i < VALUE_COUNT(arguments); i += 2) rb_hash_aset(debug_hash, arguments[i], arguments[i+1]);
   return debug_hash;
 }
 
@@ -335,7 +335,7 @@ static VALUE debug_frame(VALUE frame) {
   };
 
   VALUE debug_hash = rb_hash_new();
-  for (long unsigned int i = 0; i < (VALUE_COUNT(arguments) / 2); i++) rb_hash_aset(debug_hash, arguments[i], arguments[i+1]);
+  for (long unsigned int i = 0; i < VALUE_COUNT(arguments); i += 2) rb_hash_aset(debug_hash, arguments[i], arguments[i+1]);
   return debug_hash;
 }
 
