@@ -310,7 +310,8 @@ static VALUE debug_raw_location(raw_location *the_location) {
     ID2SYM(rb_intern("iseq_is_block?")),            /* => */ to_boolean(backtracie_iseq_is_block(the_location)),
     ID2SYM(rb_intern("iseq_is_eval?")),             /* => */ to_boolean(backtracie_iseq_is_eval(the_location)),
     ID2SYM(rb_intern("iseq")),                      /* => */ debug_frame(the_location->iseq),
-    ID2SYM(rb_intern("callable_method_entry")),     /* => */ debug_frame(the_location->callable_method_entry)
+    ID2SYM(rb_intern("callable_method_entry")),     /* => */ debug_frame(the_location->callable_method_entry),
+    ID2SYM(rb_intern("original_id")),               /* => */ the_location->original_id
   };
 
   VALUE debug_hash = rb_hash_new();

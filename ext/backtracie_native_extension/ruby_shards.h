@@ -126,6 +126,7 @@ typedef struct {
   VALUE iseq;
   VALUE callable_method_entry;
   VALUE self;
+  VALUE original_id;
 } raw_location;
 
 int backtracie_rb_profile_frames(int limit, raw_location *raw_locations);
