@@ -34,6 +34,10 @@ $CFLAGS << " " << "-Wno-unused-function"
 # Really dislike the "define everything at the beginning of the function" thing, sorry!
 $CFLAGS << " " << "-Wno-declaration-after-statement"
 
+# If we forget to include a Ruby header, the function call may still appear to work, but then
+# cause a segfault later. Let's ensure that never happens.
+$CFLAGS << " " << "-Werror-implicit-function-declaration"
+
 # Enable us to use """modern""" C
 if RUBY_VERSION < "2.4"
   $CFLAGS << " " << "-std=c99"
