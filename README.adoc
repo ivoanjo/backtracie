@@ -164,6 +164,8 @@ Other interesting links on this matter:
 * https://ruby-hacking-guide.github.io/: Ruby Hacking Guide
   ** This is one of the most through and deep guides out there to the MRI internals. Very detailed and in depth, but outdated.
 * http://patshaughnessy.net/ruby-under-a-microscope: Book with a really good introduction to MRI internals.
+* https://www.youtube.com/watch?v=QDbj4Y0E5xo: Video on the implementation of backtrace APIs in MRI and how partial backtraces were optimized in 3.0/3.1.
+* https://github.com/ruby/ruby/pull/4336 and https://github.com/ruby/ruby/pull/4108: Segfaults due to execution context changes to support Ractors in Ruby 3.0
 
 My blog posts on better backtraces:
 
