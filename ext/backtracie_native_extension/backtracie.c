@@ -20,10 +20,12 @@
 
 #include "ruby/ruby.h"
 #include "ruby/debug.h"
+#include <dlfcn.h>
 
 #include "extconf.h"
 
 #include "ruby_shards.h"
+
 
 #define MAX_STACK_DEPTH 2000 // FIXME: Need to handle when this is not enough
 
@@ -50,6 +52,7 @@ static bool is_self_class_singleton(raw_location *the_location);
 static bool is_defined_class_a_refinement(raw_location *the_location);
 static VALUE debug_raw_location(raw_location *the_location);
 static VALUE debug_frame(VALUE frame);
+static VALUE cfunc_function_info(raw_location *the_location);
 static inline VALUE to_boolean(bool value);
 
 void Init_backtracie_native_extension(void) {
@@ -311,7 +314,8 @@ static VALUE debug_raw_location(raw_location *the_location) {
     ID2SYM(rb_intern("iseq_is_eval?")),             /* => */ to_boolean(backtracie_iseq_is_eval(the_location)),
     ID2SYM(rb_intern("iseq")),                      /* => */ debug_frame(the_location->iseq),
     ID2SYM(rb_intern("callable_method_entry")),     /* => */ debug_frame(the_location->callable_method_entry),
-    ID2SYM(rb_intern("original_id")),               /* => */ the_location->original_id
+    ID2SYM(rb_intern("original_id")),               /* => */ the_location->original_id,
+    ID2SYM(rb_intern("cfunc_function_info")),       /* => */ cfunc_function_info(the_location)
   };
 
   VALUE debug_hash = rb_hash_new();
@@ -333,6 +337,25 @@ static VALUE debug_frame(VALUE frame) {
     ID2SYM(rb_intern("singleton_method_p")),    /* => */ rb_profile_frame_singleton_method_p(frame),
     ID2SYM(rb_intern("method_name")),           /* => */ rb_profile_frame_method_name(frame),
     ID2SYM(rb_intern("qualified_method_name")), /* => */ backtracie_rb_profile_frame_qualified_method_name(frame)
+  };
+
+  VALUE debug_hash = rb_hash_new();
+  for (long unsigned int i = 0; i < VALUE_COUNT(arguments); i += 2) rb_hash_aset(debug_hash, arguments[i], arguments[i+1]);
+  return debug_hash;
+}
+
+static VALUE cfunc_function_info(raw_location *the_location) {
+  Dl_info symbol_info;
+
+  if (the_location->cfunc_function == NULL ||
+    !dladdr(the_location->cfunc_function, &symbol_info)) return Qnil;
+
+  VALUE fname = symbol_info.dli_fname == NULL ? Qnil : rb_str_new2(symbol_info.dli_fname);
+  VALUE sname = symbol_info.dli_sname == NULL ? Qnil : rb_str_new2(symbol_info.dli_sname);
+
+  VALUE arguments[] = {
+    ID2SYM(rb_intern("dli_fname")), /* => */ fname,
+    ID2SYM(rb_intern("dli_sname")), /* => */ sname
   };
 
   VALUE debug_hash = rb_hash_new();

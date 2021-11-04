@@ -209,6 +209,7 @@ static int backtracie_rb_profile_frames_for_execution_context(
     raw_locations[i].iseq = Qnil;
     raw_locations[i].callable_method_entry = Qnil;
     raw_locations[i].original_id = Qnil;
+    raw_locations[i].cfunc_function = NULL;
 
     // The current object this is getting called on!
     raw_locations[i].self = cfp->self;
@@ -246,6 +247,7 @@ static int backtracie_rb_profile_frames_for_execution_context(
         raw_locations[i].vm_method_type = cme->def->type;
         raw_locations[i].line_number = 0;
         raw_locations[i].original_id = ID2SYM(cme->def->original_id);
+        raw_locations[i].cfunc_function = cme->def->body.cfunc.func;
 
         i++;
       }

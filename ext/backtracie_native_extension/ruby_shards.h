@@ -127,6 +127,9 @@ typedef struct {
   VALUE callable_method_entry;
   VALUE self;
   VALUE original_id;
+
+  // Original function pointer for C function
+  VALUE (*cfunc_function)(ANYARGS);
 } raw_location;
 
 int backtracie_rb_profile_frames(int limit, raw_location *raw_locations);
