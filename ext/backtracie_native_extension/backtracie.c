@@ -346,9 +346,10 @@ static VALUE debug_frame(VALUE frame) {
 
 static VALUE cfunc_function_info(raw_location *the_location) {
   Dl_info symbol_info;
+  struct Elf64_Sym *elf_symbol = 0;
 
   if (the_location->cfunc_function == NULL ||
-    !dladdr(the_location->cfunc_function, &symbol_info)) return Qnil;
+    !dladdr1(the_location->cfunc_function, &symbol_info, (void**) &elf_symbol, RTLD_DL_SYMENT)) return Qnil;
 
   VALUE fname = symbol_info.dli_fname == NULL ? Qnil : rb_str_new2(symbol_info.dli_fname);
   VALUE sname = symbol_info.dli_sname == NULL ? Qnil : rb_str_new2(symbol_info.dli_sname);
