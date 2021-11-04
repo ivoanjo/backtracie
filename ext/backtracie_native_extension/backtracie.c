@@ -345,6 +345,8 @@ static VALUE debug_frame(VALUE frame) {
 }
 
 static VALUE cfunc_function_info(raw_location *the_location) {
+  return Qnil;
+  #if 0 // Disabled until this can be fixed up to not break Windows/macOS
   Dl_info symbol_info;
   struct Elf64_Sym *elf_symbol = 0;
 
@@ -362,6 +364,7 @@ static VALUE cfunc_function_info(raw_location *the_location) {
   VALUE debug_hash = rb_hash_new();
   for (long unsigned int i = 0; i < VALUE_COUNT(arguments); i += 2) rb_hash_aset(debug_hash, arguments[i], arguments[i+1]);
   return debug_hash;
+  #endif
 }
 
 static inline VALUE to_boolean(bool value) {
