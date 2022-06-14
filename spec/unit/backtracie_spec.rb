@@ -242,6 +242,8 @@ RSpec.describe Backtracie do
 
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
+      # This should probably be `test_method` and not `test_method{block}` but we currently know no way of making it behave that way.
+      # See comments on the "when sampling a method defined using define_method" test above for details.
       it "sets the qualified_method_name to include the class name and test_method{block}" do
         expect(backtracie_stack[2].qualified_method_name).to eq "SingletonClassWithMethodDefinedUsingDefinedMethod#test_method{block}"
       end
