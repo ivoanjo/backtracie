@@ -189,6 +189,12 @@ static VALUE qualified_method_name_for_location(raw_location *the_location) {
     }
   }
 
+  // This should never happen, but it has happened once before, and with the amount complexity above, it may end up
+  // happening again, so just in case let's trade a crash for an obvious "things went wrong" marker.
+  if (qualified_method_name == Qnil) {
+    qualified_method_name = rb_str_new2("FIXME_SHOULD_NEVER_HAPPEN");
+  }
+
   if (backtracie_iseq_is_block(the_location) || backtracie_iseq_is_eval(the_location)) {
     rb_str_concat(qualified_method_name, rb_str_new2("{block}"));
   }
