@@ -223,6 +223,30 @@ RSpec.describe Backtracie do
       end
     end
 
+    context "when sampling a singleton method defined using define_method" do
+      class SingletonClassWithMethodDefinedUsingDefinedMethod
+        class << self
+          define_method(:test_method) do |&block|
+            block.call
+          end
+        end
+      end
+
+      let(:test_object) { SingletonClassWithMethodDefinedUsingDefinedMethod }
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_object.test_method { described_class.backtrace_locations(Thread.current) }, test_object.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it "sets the qualified_method_name to include the class name and test_method{block}" do
+        expect(backtracie_stack[2].qualified_method_name).to eq "SingletonClassWithMethodDefinedUsingDefinedMethod#test_method{block}"
+      end
+    end
+
     context "when sampling a block inside a method defined using define_method" do
       class ClassWithBlockInsideMethodDefinedUsingDefinedMethod
         define_method(:test_method) do |&block|

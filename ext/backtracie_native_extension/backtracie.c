@@ -260,7 +260,12 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
           rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
           rb_str_concat(name, rb_str_new2("$singleton."));
         } else {
-          return SAFE_NAVIGATION(backtracie_rb_profile_frame_qualified_method_name, the_location->callable_method_entry);
+          if (backtracie_method_is_bmethod(the_location)) {
+            return qualified_method_name_for_block(the_location);
+          } else {
+            // rb_profile_frame_method_name & friends works with CFUNCs and ISEQ methods, but not BMETHODs
+            return backtracie_rb_profile_frame_qualified_method_name(the_location->callable_method_entry);
+          }
         }
       } else {
         rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));

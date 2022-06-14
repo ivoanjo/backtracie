@@ -319,6 +319,11 @@ bool backtracie_iseq_is_eval(raw_location *the_location) {
   return ((rb_iseq_t *) the_location->iseq)->body->type == ISEQ_TYPE_EVAL;
 }
 
+bool backtracie_method_is_bmethod(raw_location *the_location) {
+  return the_location->callable_method_entry &&
+    the_location->vm_method_type == VM_METHOD_TYPE_BMETHOD;
+}
+
 VALUE backtracie_refinement_name(raw_location *the_location) {
   VALUE defined_class = backtracie_defined_class(the_location);
   if (defined_class == Qnil) return Qnil;
