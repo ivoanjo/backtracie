@@ -164,7 +164,10 @@ static VALUE qualified_method_name_for_location(raw_location *the_location) {
     qualified_method_name = backtracie_refinement_name(the_location);
     rb_str_concat(qualified_method_name, rb_str_new2("#"));
     rb_str_concat(qualified_method_name, rb_profile_frame_label(frame));
-  } else if (is_self_class_singleton(the_location)) {
+  } else if (
+    RTEST(the_location->callable_method_entry) &&
+    is_self_class_singleton(the_location)
+  ) {
     qualified_method_name = qualified_method_name_from_self(the_location);
   } else if (
     RTEST(the_location->callable_method_entry) &&
@@ -268,7 +271,7 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
       // correctly, so we just delegate.
       if (the_class == rb_cModule || the_class == rb_cClass) {
         // Is the class/module is anonymous?
-        if (rb_mod_name(the_location->self) == Qnil) {
+        if (rb_mod_name(the_location->self) == Qnil || !RTEST(the_location->callable_method_entry)) {
           rb_str_concat(name, rb_funcall(the_class, to_s_id, 0));
           rb_str_concat(name, rb_str_new2("$singleton."));
         } else {

@@ -348,6 +348,41 @@ RSpec.describe Backtracie do
       end
     end
 
+    context 'when sampling a module extended hook' do
+      let(:test_method) do
+        proc do |&block|
+          $backtracie_global_block = block # rubocop:disable Style/GlobalVars
+
+          module ::ModuleToBeIncluded
+            def self.extended(other)
+              $backtracie_bt = $backtracie_global_block.call # rubocop:disable Style/GlobalVars
+            end
+          end
+
+          module ::ModuleToHaveIncludeApplied
+            extend ::ModuleToBeIncluded
+          end
+
+          Object.send(:remove_const, :ModuleToHaveIncludeApplied)
+          Object.send(:remove_const, :ModuleToBeIncluded)
+
+          $backtracie_bt # rubocop:disable Style/GlobalVars
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_method.call { described_class.backtrace_locations(Thread.current) }, test_method.call { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        expect(backtracie_stack[4].qualified_method_name).to eq "Module$singleton.<module:ModuleToHaveIncludeApplied>"
+      end
+    end
+
     context "when sampling a top-level block" do
       # These two function calls should never be reformatted to be on different lines!
       # See above for a note on why this looks weird
