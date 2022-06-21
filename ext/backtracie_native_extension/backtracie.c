@@ -166,7 +166,10 @@ static VALUE qualified_method_name_for_location(raw_location *the_location) {
     rb_str_concat(qualified_method_name, rb_profile_frame_label(frame));
   } else if (is_self_class_singleton(the_location)) {
     qualified_method_name = qualified_method_name_from_self(the_location);
-  } else if (backtracie_iseq_is_block(the_location) || backtracie_iseq_is_eval(the_location)) {
+  } else if (
+    RTEST(the_location->callable_method_entry) &&
+    (backtracie_iseq_is_block(the_location) || backtracie_iseq_is_eval(the_location))
+  ) {
     qualified_method_name = qualified_method_name_for_block(the_location);
   } else if (defined_class != Qnil && rb_mod_name(defined_class) == Qnil) {
     // Instance of an anonymous class. Let's find it a name
@@ -192,7 +195,7 @@ static VALUE qualified_method_name_for_location(raw_location *the_location) {
   // This should never happen, but it has happened once before, and with the amount complexity above, it may end up
   // happening again, so just in case let's trade a crash for an obvious "things went wrong" marker.
   if (qualified_method_name == Qnil) {
-    qualified_method_name = rb_str_new2("FIXME_SHOULD_NEVER_HAPPEN");
+    qualified_method_name = rb_str_new2("FIXME_SHOULD_NEVER_HAPPEN_NO_QUALIFIED_METHOD_NAME");
   }
 
   if (backtracie_iseq_is_block(the_location) || backtracie_iseq_is_eval(the_location)) {
@@ -230,6 +233,9 @@ static VALUE frame_from_location(raw_location *the_location) {
 
 static VALUE qualified_method_name_for_block(raw_location *the_location) {
   VALUE class_name = backtracie_rb_profile_frame_classpath(the_location->callable_method_entry);
+  if (!RTEST(class_name)) {
+    class_name = rb_str_new2("FIXME_SHOULD_NEVER_HAPPEN_NO_CLASS_NAME");
+  }
   VALUE method_name = backtracie_called_id(the_location);
   VALUE is_singleton_method = rb_profile_frame_singleton_method_p(the_location->iseq);
 
@@ -279,8 +285,8 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
       }
     }
   } else {
-    // Not very sure if this branch of the if is ever reached, and if it would be for a instance or static call, so
-    // let's just have these defaults and revisit as needed
+    // This branch can get reached when executing code _inside_ a module or class e.g.
+    // module Barfoo; capture_backtrace; end;
     rb_str_concat(name, rb_funcall(self_class, to_s_id, 0));
     rb_str_concat(name, rb_str_new2("#"));
   }
@@ -290,7 +296,6 @@ static VALUE qualified_method_name_from_self(raw_location *the_location) {
   } else {
     rb_str_concat(name, rb_profile_frame_base_label(frame_from_location(the_location)));
   }
-
   return name;
 }
 

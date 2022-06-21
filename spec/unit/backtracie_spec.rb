@@ -271,6 +271,83 @@ RSpec.describe Backtracie do
       end
     end
 
+    context "when sampling a tracepoint hitting define_method defined inside a block" do
+
+      # This is a minimal (yes, believe it or not, I couldn't get it any smaller) reproduction of an issue I hit in
+      # ruby_memprofiler_pprof. The situation there is:
+      #     * You have a tracepoint bound to newobj, which is capturing backtraces of new object allocations
+      #     * You are requiring a file, which calls define_method from inside a block. In ruby_memprofiler_pprof,
+      #       the code in question was this, from Bootsnap:
+      #       https://github.com/Shopify/bootsnap/blob/v1.8.1/lib/bootsnap/load_path_cache/change_observer.rb#L49
+      #     * define_method does some allocations, which hit our tracepoint, and we try to capture a backtrace
+      #     * An exception is thrown from inside backtracie: "TypeError: no implicit conversion of nil into String"
+      # It seems, according to my debugger, in this case:
+      #     * The callable_method_entry is Qnil, and
+      #     * The iseq is ISEQ_TYPE_BLOCK
+      # Seems to be a problem in everything from Ruby 2.6 -> 3.1 inclusive (I didn't try anything earlier or later).
+      let(:test_method) do
+        proc do |&blk|
+          bt = nil
+
+          # newobj tracepoints can only be bound from C extensions, but thankfully the issue can be
+          # reproduced with a c-call tracepoint too which has the same effect.
+          set_trace_func(proc do |event, file, line, id, binding, classname|
+            if id == :define_method && event == 'c-call'
+              bt = blk.call
+            end
+          end)
+
+          TOPLEVEL_BINDING.eval <<~RUBY
+            module ToplevelModuleWithDefineMethodInIt
+              %i(some_random_method).each do |m|
+                define_method(m) {}
+              end
+            end
+            Object.send(:remove_const, :ToplevelModuleWithDefineMethodInIt)
+          RUBY
+
+          set_trace_func nil
+          bt
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_method.call { described_class.backtrace_locations(Thread.current) }, test_method.call { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        expect(backtracie_stack[3].qualified_method_name).to eq "Module\#{block}"
+      end
+    end
+
+    context "when sampling code inside a module" do
+      let(:test_method) do
+        proc do |&blk|
+          $backtracie_global_block = blk # rubocop:disable Style/GlobalVars
+          module CapturingBacktraceFromInsideAModule
+            $backtracie_bt = $backtracie_global_block.call # rubocop:disable Style/GlobalVars
+          end
+          $backtracie_bt # rubocop:disable Style/GlobalVars
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_method.call { described_class.backtrace_locations(Thread.current) }, test_method.call { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        expect(backtracie_stack[2].qualified_method_name).to eq "Module#<module:CapturingBacktraceFromInsideAModule>"
+      end
+    end
+
     context "when sampling a top-level block" do
       # These two function calls should never be reformatted to be on different lines!
       # See above for a note on why this looks weird
