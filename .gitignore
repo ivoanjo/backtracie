@@ -31,5 +31,6 @@ Gemfile.lock
 
 *.o
 *.so
+*.bundle
 ext/**/extconf.h
 ext/**/Makefile
