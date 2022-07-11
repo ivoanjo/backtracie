@@ -18,7 +18,11 @@
 
 #include "extconf.h"
 
+#if 0
+// Disabled until this is fixed to not break Windows
 #include <dlfcn.h>
+#endif
+
 #include <ruby.h>
 #include <ruby/debug.h>
 #include <ruby/intern.h>
