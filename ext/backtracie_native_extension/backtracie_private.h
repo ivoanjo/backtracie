@@ -16,5 +16,5 @@
 #define BACKTRACIE_ASSERT_FAIL(msg) BACKTRACIE_ASSERT_MSG(0, msg)
 
 bool backtracie_is_thread_alive(VALUE thread);
-
+void backtracie_init_c_test_helpers(VALUE backtracie_module);
 #endif
