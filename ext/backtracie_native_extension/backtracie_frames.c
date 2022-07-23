@@ -170,7 +170,7 @@ static int frame_label(const raw_location *loc, bool base,
                        strbuilder_t *strout);
 static const raw_location *prev_ruby_location(const raw_location *loc,
                                               size_t loc_len);
-static int calc_lineno(const rb_iseq_t *iseq, const VALUE *pc);
+static int calc_lineno(const rb_iseq_t *iseq, const void *pc);
 static const rb_callable_method_entry_t *
 backtracie_vm_frame_method_entry(const rb_control_frame_t *cfp);
 
@@ -342,8 +342,7 @@ bool backtracie_capture_frame_for_thread(VALUE thread, int frame_index,
 int backtracie_frame_line_number(const raw_location *loc, size_t loc_len) {
   const raw_location *prev_rbframe = prev_ruby_location(loc, loc_len);
   if (prev_rbframe) {
-    return calc_lineno((rb_iseq_t *)prev_rbframe->iseq,
-                       (const VALUE *)prev_rbframe->pc);
+    return calc_lineno((rb_iseq_t *)prev_rbframe->iseq, prev_rbframe->pc);
   } else {
     return 0;
   }
@@ -701,7 +700,7 @@ static bool iseq_path(const rb_iseq_t *iseq, bool absolute,
   Copyright (C) 1993-2012 Yukihiro Matsumoto
 **********************************************************************/
 
-static int calc_lineno(const rb_iseq_t *iseq, const VALUE *pc) {
+static int calc_lineno(const rb_iseq_t *iseq, const void *pc) {
   VM_ASSERT(iseq);
   VM_ASSERT(iseq->body);
   VM_ASSERT(iseq->body->iseq_encoded);
@@ -713,7 +712,7 @@ static int calc_lineno(const rb_iseq_t *iseq, const VALUE *pc) {
     VM_ASSERT(!iseq->body->local_table_size);
     return 0;
   } else {
-    ptrdiff_t n = pc - iseq->body->iseq_encoded;
+    ptrdiff_t n = (const VALUE *)pc - iseq->body->iseq_encoded;
     VM_ASSERT(n <= iseq->body->iseq_size);
     VM_ASSERT(n >= 0);
     ASSUME(n >= 0);
