@@ -81,7 +81,7 @@ BACKTRACIE_API int backtracie_frame_count_for_thread(VALUE thread);
 // refer to a "valid" frame on the ruby stack; there are some entries on the
 // Ruby stack which are not actually meaningful from a call-stack perspective.
 //
-// The maximum allowaboe value for i is
+// The maximum allowable value for i is
 // (1-backtracie_frame_count_for_thread(thread)). Any value higher than this
 // will crash.
 
@@ -174,7 +174,7 @@ void backtracie_frame_mark(const raw_location *loc);
 // Like backtracie_frame_mark, but calls rb_gc_mark_movable if available.
 BACKTRACIE_API
 void backtracie_frame_mark_movable(const raw_location *loc);
-// Updates *loc's VALUEs to point to possibly-moved locaitons
+// Updates *loc's VALUEs to point to possibly-moved locations
 BACKTRACIE_API
 void backtracie_frame_compact(raw_location *loc);
 

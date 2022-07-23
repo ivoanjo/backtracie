@@ -179,7 +179,7 @@ static void backtracie_frame_wrapper_compact(void *ptr);
 static void backtracie_frame_wrapper_free(void *ptr);
 static size_t backtracie_frame_wrapper_memsize(const void *ptr);
 static const rb_data_type_t backtracie_frame_wrapper_type = {
-    .wrap_struct_name = "backtracie_frame_wrapprer",
+    .wrap_struct_name = "backtracie_frame_wrapper",
     .function = {.dmark = backtracie_frame_wrapper_mark,
                  .dfree = backtracie_frame_wrapper_free,
                  .dsize = backtracie_frame_wrapper_memsize,
