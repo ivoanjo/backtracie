@@ -189,7 +189,9 @@ static const rb_data_type_t backtracie_frame_wrapper_type = {
                  .reserved = {0}},
     .parent = NULL,
     .data = NULL,
-    .flags = 0,
+    // This is safe, because our free function does not do anything which could
+    // yield the GVL.
+    .flags = RUBY_TYPED_FREE_IMMEDIATELY,
 };
 
 typedef struct {
