@@ -80,7 +80,7 @@ BACKTRACIE_API int backtracie_frame_count_for_thread(VALUE thread);
 // Ruby stack which are not actually meaningful from a call-stack perspective.
 //
 // The maximum allowable value for i is
-// (1-backtracie_frame_count_for_thread(thread)). Any value higher than this
+// (backtracie_frame_count_for_thread(thread) - 1). Any value higher than this
 // will crash.
 
 // If the given index DOES refer to a valid frame on the Ruby stack:
