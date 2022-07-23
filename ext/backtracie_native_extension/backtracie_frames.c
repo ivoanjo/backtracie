@@ -800,7 +800,7 @@ VALUE backtracie_frame_wrapper_new(size_t count) {
                             &backtracie_frame_wrapper_type, frame_data);
   frame_data->capa = count;
   frame_data->len = 0;
-  frame_data->frames = xcalloc(sizeof(raw_location), count);
+  frame_data->frames = xcalloc(count, sizeof(raw_location));
   return wrapper;
 }
 

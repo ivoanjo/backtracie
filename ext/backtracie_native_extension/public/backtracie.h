@@ -94,7 +94,7 @@ BACKTRACIE_API int backtracie_frame_count_for_thread(VALUE thread);
 //
 //   VALUE thread = rb_thread_current();
 //   int max_frame_count = backtracie_frame_count_for_thread(thread);
-//   raw_location *locs = xcalloc(sizeof(raw_location), frame_count);
+//   raw_location *locs = xcalloc(frame_count ,sizeof(raw_location));
 //   int frame_counter = 0;
 //   for (int i = 0; i < max_frame_count; i++) {
 //     bool is_valid = backtracie_capture_frame_for_thread(thread, i,
