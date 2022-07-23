@@ -85,6 +85,8 @@ void Init_backtracie_native_extension(void) {
 
   backtracie_frame_wrapper_class =
       rb_define_class_under(backtracie_module, "FrameWrapper", rb_cObject);
+  // this class should only be instantiated via backtracie_frame_wrapper_new
+  rb_undef_alloc_func(backtracie_frame_wrapper_class);
 }
 
 // Get array of Backtracie::Locations for a given thread; if thread is nil,
