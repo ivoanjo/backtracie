@@ -23,8 +23,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define BACKTRACIE_ABI_VERSION ((uint32_t)0x1)
-
 // clang-format off
 #if defined(_WIN32) || defined(_WIN64)
 # ifdef BACKTRACIE_EXPORTS
