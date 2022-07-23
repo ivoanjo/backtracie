@@ -85,8 +85,9 @@
 // * A few were copy-pasted verbatim, and are dependencies for other functions
 // * A few were copy-pasted and then changed so we can add features and fixes
 // * A few were copy-pasted verbatim, with the objective of backporting
-// their 3.0.0 behavior to earlier Ruby versions `git blame` usually documents
-// which functions were added for what reason.
+//   their 3.0.0 behavior to earlier Ruby versions.
+//
+// `git blame` usually documents which functions were added for what reason.
 
 // Note that since the RUBY_MJIT_HEADER is a very special header, meant for
 // internal use only, it has a number of quirks:
