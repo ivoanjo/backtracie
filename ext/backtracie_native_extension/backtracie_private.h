@@ -2,6 +2,7 @@
 #define BACKTRACIE_PRIVATE_H
 
 #include <ruby.h>
+#include <stdbool.h>
 
 // Need to define an assert macro - we might have just used RUBY_ASSERT, but
 // that's not exported in Ruby < 2.7.
