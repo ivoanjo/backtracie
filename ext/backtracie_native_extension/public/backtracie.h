@@ -176,24 +176,12 @@ void backtracie_frame_mark_movable(const raw_location *loc);
 BACKTRACIE_API
 void backtracie_frame_compact(raw_location *loc);
 
-// This is an _optional_ facility to have Backtracie manage the
-// allocating/marking/moving/freeing of an array of Backtracie frames. If you
-// use this, the raw_location structs are guaranteed to be contiguous in memory
-// and valid until the VALUE is collected.
-BACKTRACIE_API
-VALUE backtracie_frame_wrapper_new(size_t count);
-BACKTRACIE_API
-raw_location *backtracie_frame_wrapper_frames(VALUE wrapper);
-BACKTRACIE_API
-size_t backtracie_frame_wrapper_size(VALUE wrapper);
-
-// Extending on this optional facility, this lets one create a VALUE to contain
-// backtracie frames, and own the process of marking them. When using this, you
-// need only mark the wrapper, and the wrapper will take care of marking the
-// individual frames.
-// NOTE - if you keep a reference to this value on the stack, you _probably_
-// need to use RB_GC_GUARD() on it, because the Ruby GC cannot trace usage of
-// the underlying pointer.
+// This is an optional facility to create a VALUE containing an array of
+// backtracie frames, which itself owns the process of marking them. When using
+// this, you need only mark the wrapper, and the wrapper will take care of
+// marking the individual frames. NOTE - if you keep a reference to this value
+// on the stack, you _probably_ need to use RB_GC_GUARD() on it, because the
+// Ruby GC cannot trace usage of the underlying pointer.
 BACKTRACIE_API
 VALUE backtracie_frame_wrapper_new(size_t capa);
 // Returns the underying array of frames for use
