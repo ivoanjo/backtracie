@@ -692,14 +692,20 @@ RSpec.describe Backtracie do
     end
   end
 
-  context 'when sampling a thread from rb_create_thread' do
+  context 'when sampling a thread from rb_create_thread, with no ruby frames' do
     let(:backtracie_backtrace) { Backtracie::TestHelpers.backtracie_backtrace_from_thread }
-    let(:stdlib_backtrace) { Backtracie::TestHelpers.stdlib_backtrace_from_thread }
 
     it 'returns "(in native func) for the top frame' do
       expect(backtracie_backtrace[0].absolute_path).to eq "(in native code)"
       expect(backtracie_backtrace[0].lineno).to eq 0
       expect(backtracie_backtrace[0].path_is_synthetic).to eq true
+    end
+  end
+  context 'when sampling a thread from rb_create_thread, with no frames at all' do
+    let(:backtracie_backtrace) { Backtracie::TestHelpers.backtracie_backtrace_from_empty_thread }
+
+    it 'returns an empty array' do
+      expect(backtracie_backtrace).to be_empty
     end
   end
 end

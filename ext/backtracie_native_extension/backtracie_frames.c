@@ -256,10 +256,14 @@ void backtracie_frame_compact(raw_location *loc) {
 static int
 backtracie_frame_count_for_execution_context(rb_execution_context_t *ec) {
   const rb_control_frame_t *last_cfp = ec->cfp;
-  // +2 because of the two dummy frames at the bottom of the stack.
+  // -2 because of the two dummy frames at the bottom of the stack.
   const rb_control_frame_t *start_cfp = RUBY_VM_END_CONTROL_FRAME(ec) - 2;
 
-  if (start_cfp < last_cfp) {
+  if (ec->cfp == NULL) {
+    // This case means that a new thread hasn't called _any_ ruby method yet, it
+    // seems. Returning zero from here is the most sensible answer.
+    return 0;
+  } else if (start_cfp < last_cfp) {
     return 0;
   } else {
     return (int)(start_cfp - last_cfp + 1);
