@@ -110,7 +110,12 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
       it do
-        expect(backtracie_stack[1].qualified_method_name).to eq self.class.name + "$singleton\#{block}"
+        # On Ruby 2.3, this prints "Object$anonymous#backtraces_for_comparison{block}". Need to investigate.
+        pending "broken on Ruby 2.3" if RUBY_VERSION < '2.4'
+        # This used to expect "${self.class.name}$singleton", but actually this is more correct - the
+        # backtraces_for_comparison method is actually defined on a ::LetDefinitions class that's included
+        # in the test class.
+        expect(backtracie_stack[1].qualified_method_name).to eq "#{self.class.name}::LetDefinitions#backtraces_for_comparison{block}"
       end
     end
 
@@ -245,7 +250,7 @@ RSpec.describe Backtracie do
       # This should probably be `test_method` and not `test_method{block}` but we currently know no way of making it behave that way.
       # See comments on the "when sampling a method defined using define_method" test above for details.
       it "sets the qualified_method_name to include the class name and test_method{block}" do
-        expect(backtracie_stack[2].qualified_method_name).to eq "SingletonClassWithMethodDefinedUsingDefinedMethod#test_method{block}"
+        expect(backtracie_stack[2].qualified_method_name).to eq "SingletonClassWithMethodDefinedUsingDefinedMethod.test_method{block}"
       end
     end
 
@@ -268,6 +273,118 @@ RSpec.describe Backtracie do
 
       it do
         expect(backtracie_stack[2].qualified_method_name).to eq "ClassWithBlockInsideMethodDefinedUsingDefinedMethod#test_method{block}"
+      end
+    end
+
+    context "when sampling a tracepoint hitting define_method defined inside a block" do
+
+      # This is a minimal (yes, believe it or not, I couldn't get it any smaller) reproduction of an issue I hit in
+      # ruby_memprofiler_pprof. The situation there is:
+      #     * You have a tracepoint bound to newobj, which is capturing backtraces of new object allocations
+      #     * You are requiring a file, which calls define_method from inside a block. In ruby_memprofiler_pprof,
+      #       the code in question was this, from Bootsnap:
+      #       https://github.com/Shopify/bootsnap/blob/v1.8.1/lib/bootsnap/load_path_cache/change_observer.rb#L49
+      #     * define_method does some allocations, which hit our tracepoint, and we try to capture a backtrace
+      #     * An exception is thrown from inside backtracie: "TypeError: no implicit conversion of nil into String"
+      # It seems, according to my debugger, in this case:
+      #     * The callable_method_entry is Qnil, and
+      #     * The iseq is ISEQ_TYPE_BLOCK
+      # Seems to be a problem in everything from Ruby 2.6 -> 3.1 inclusive (I didn't try anything earlier or later).
+      let(:test_method) do
+        proc do |&blk|
+          bt = nil
+
+          # newobj tracepoints can only be bound from C extensions, but thankfully the issue can be
+          # reproduced with a c-call tracepoint too which has the same effect.
+          tp = TracePoint.trace(:c_call) do |ev|
+            bt = blk.call if ev.method_id == :define_method
+          end
+
+          TOPLEVEL_BINDING.eval <<~RUBY
+            module ToplevelModuleWithDefineMethodInIt
+              %i(some_random_method).each do |m|
+                define_method(m) {}
+              end
+            end
+            Object.send(:remove_const, :ToplevelModuleWithDefineMethodInIt)
+          RUBY
+
+          tp.disable
+          bt
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_method.call { described_class.backtrace_locations(Thread.current) }, test_method.call { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        # It's {module exec} AND {block} because it's inside an #each block inside module Foo ... end
+        # Looks a bit stupid but gets the point across.
+        expect(backtracie_stack[3].qualified_method_name).to eq "ToplevelModuleWithDefineMethodInIt.{module exec}{block}"
+      end
+    end
+
+    context "when sampling code inside a module" do
+      let(:test_method) do
+        proc do |&blk|
+          $backtracie_global_block = blk # rubocop:disable Style/GlobalVars
+          module CapturingBacktraceFromInsideAModule
+            $backtracie_bt = $backtracie_global_block.call # rubocop:disable Style/GlobalVars
+          end
+          $backtracie_bt # rubocop:disable Style/GlobalVars
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_method.call { described_class.backtrace_locations(Thread.current) }, test_method.call { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        expect(backtracie_stack[2].qualified_method_name).to eq "CapturingBacktraceFromInsideAModule.{module exec}"
+      end
+    end
+
+    context 'when sampling a module extended hook' do
+      let(:test_method) do
+        proc do |&block|
+          $backtracie_global_block = block # rubocop:disable Style/GlobalVars
+
+          module ::ModuleToBeIncluded
+            def self.extended(other)
+              $backtracie_bt = $backtracie_global_block.call # rubocop:disable Style/GlobalVars
+            end
+          end
+
+          module ::ModuleToHaveIncludeApplied
+            extend ::ModuleToBeIncluded
+          end
+
+          Object.send(:remove_const, :ModuleToHaveIncludeApplied)
+          Object.send(:remove_const, :ModuleToBeIncluded)
+
+          $backtracie_bt # rubocop:disable Style/GlobalVars
+        end
+      end
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [test_method.call { described_class.backtrace_locations(Thread.current) }, test_method.call { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        expect(backtracie_stack[4].qualified_method_name).to eq "ModuleToHaveIncludeApplied.{module exec}"
       end
     end
 
@@ -359,8 +476,6 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
       it do
-        pending "Broken on Ruby < 2.6; to be investigated" if RUBY_VERSION < "2.6"
-
         expect(backtracie_stack[2].qualified_method_name).to eq "ModuleWithFunction.test_function"
       end
     end
@@ -458,8 +573,11 @@ RSpec.describe Backtracie do
     end
 
     context "when sampling a method defined in an object's singleton class" do
+      class ClassToGetASingletonMethodDefined
+      end
+
       let(:the_singleton_class) {
-        Object.new.singleton_class.tap { |it|
+        ClassToGetASingletonMethodDefined.new.singleton_class.tap { |it|
           def it.test_method
             yield
           end
@@ -475,7 +593,7 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
       it do
-        expect(backtracie_stack[2].qualified_method_name).to eq "Class$singleton.test_method"
+        expect(backtracie_stack[2].qualified_method_name).to eq "ClassToGetASingletonMethodDefined$singleton.test_method"
       end
     end
 
@@ -523,8 +641,6 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
       it do
-        pending("TODO")
-
         expect(backtracie_stack[2].qualified_method_name).to eq "Array$anonymous#test_method{block}"
       end
     end
@@ -573,6 +689,23 @@ RSpec.describe Backtracie do
         expect(result).to eq dead_thread.backtrace_locations
         expect(result).to be nil
       end
+    end
+  end
+
+  context 'when sampling a thread from rb_create_thread, with no ruby frames' do
+    let(:backtracie_backtrace) { Backtracie::TestHelpers.backtracie_backtrace_from_thread }
+
+    it 'returns "(in native func) for the top frame' do
+      expect(backtracie_backtrace[0].absolute_path).to eq "(in native code)"
+      expect(backtracie_backtrace[0].lineno).to eq 0
+      expect(backtracie_backtrace[0].path_is_synthetic).to eq true
+    end
+  end
+  context 'when sampling a thread from rb_create_thread, with no frames at all' do
+    let(:backtracie_backtrace) { Backtracie::TestHelpers.backtracie_backtrace_from_empty_thread }
+
+    it 'returns an empty array' do
+      expect(backtracie_backtrace).to be_empty
     end
   end
 end
