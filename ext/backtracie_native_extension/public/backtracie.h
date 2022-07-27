@@ -123,36 +123,21 @@ VALUE backtracie_frame_name_rbstr(const raw_location *loc);
 //
 // Pass true/false for absolute to get the full, realpath vs just the path.
 //
-// loc is _actually_ considered to be a pointer to an _array_ of locations, of
-// length loc_len. This means, that if a location is actually a cfunc, we
-// can crawl down to loc[1], loc[2], ... looking for a frame which is not a
-// cfunc, and return the filename for _that_. This matches the behaviour of Ruby
-// when calling Thread#backtrace et. al.
-// If you _only_ have a single frame, and don't want this crawling behaviour,
-// set loc_len to 1
-//
-// If loc is a cfunc, and there is no higher non-cfunc frame (or loc_len is
-// zero), then 0 is returned.
+// If loc is a cfunc, and therefore has no filename, 0 is returned (and no
+// string is written to *buf)
 BACKTRACIE_API
-size_t backtracie_frame_filename_cstr(const raw_location *loc, size_t loc_len,
-                                      bool absolute, char *buf, size_t buflen);
+size_t backtracie_frame_filename_cstr(const raw_location *loc, bool absolute,
+                                      char *buf, size_t buflen);
 // Like backtracie_frame_filename_cstr, but returns a Ruby string. Will allocate
 // memory to ensure there is no truncation. Returns Qnil if there is no
 // filename.
 BACKTRACIE_API
-VALUE backtracie_frame_filename_rbstr(const raw_location *loc, size_t loc_len,
-                                      bool absolute);
+VALUE backtracie_frame_filename_rbstr(const raw_location *loc, bool absolute);
 
 // Returns the source line number of the given location, if it's a Ruby frame
-// (otherwise, returns 0). Otherwise, the behaviour depends on loc_len.
-// Like with backtracie_frame_filename_cstr, *loc is assumed to be an array with
-// at least loc_len elements; subsequent leements represent lower frames on the
-// callstack. If *loc is a cframe and therefore has no line number, we can
-// therefore look up loc[1], loc[2], ... until we find a ruby frame and return
-// that line number.
-// Again, if you have only a single frame, pass 1 for loc_len.
+// (otherwise, returns 0).
 BACKTRACIE_API
-int backtracie_frame_line_number(const raw_location *loc, size_t loc_len);
+int backtracie_frame_line_number(const raw_location *loc);
 // Returns a string which would be like the "label" returned by
 // rb_profile_frames or Thread#backtrace or similar.
 BACKTRACIE_API

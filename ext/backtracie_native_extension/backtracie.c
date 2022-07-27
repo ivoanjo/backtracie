@@ -51,7 +51,8 @@ static VALUE collect_backtrace_locations(VALUE self, VALUE thread,
                                          int ignored_stack_top_frames);
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label,
                                  VALUE label, VALUE lineno, VALUE path,
-                                 VALUE qualified_method_name, VALUE debug);
+                                 VALUE qualified_method_name,
+                                 VALUE path_is_synthetic, VALUE debug);
 static VALUE frame_to_location(const raw_location *raw_loc,
                                const raw_location *prev_ruby_loc);
 static VALUE debug_raw_location(const raw_location *the_location);
@@ -129,8 +130,7 @@ static VALUE collect_backtrace_locations(VALUE self, VALUE thread,
   // previous ruby frame for a C frame. This is required because C frames don't
   // have filenames or line numbers; we must instead use the filename/lineno of
   // the _caller_ of the function.
-  // note we seed prev_ruby_loc with the bottom frame so it's never null.
-  raw_location *prev_ruby_loc = &raw_frames[*raw_frames_len - 1];
+  raw_location *prev_ruby_loc = NULL;
   for (int i = *raw_frames_len - 1; i >= 0; i--) {
     if (raw_frames[i].is_ruby_frame) {
       prev_ruby_loc = &raw_frames[i];
@@ -164,22 +164,44 @@ static VALUE primitive_backtrace_locations(VALUE self, VALUE thread) {
 
 inline static VALUE new_location(VALUE absolute_path, VALUE base_label,
                                  VALUE label, VALUE lineno, VALUE path,
-                                 VALUE qualified_method_name, VALUE debug) {
-  VALUE arguments[] = {absolute_path,         base_label, label, lineno, path,
-                       qualified_method_name, debug};
+                                 VALUE qualified_method_name,
+                                 VALUE path_is_synthetic, VALUE debug) {
+  VALUE arguments[] = {
+      absolute_path,         base_label,        label, lineno, path,
+      qualified_method_name, path_is_synthetic, debug};
   return rb_class_new_instance(VALUE_COUNT(arguments), arguments,
                                backtracie_location_class);
 }
 
 static VALUE frame_to_location(const raw_location *raw_loc,
                                const raw_location *prev_ruby_loc) {
-  return new_location(backtracie_frame_filename_rbstr(prev_ruby_loc, 1, true),
-                      backtracie_frame_label_rbstr(raw_loc, true),
-                      backtracie_frame_label_rbstr(raw_loc, false),
-                      INT2NUM(backtracie_frame_line_number(prev_ruby_loc, 1)),
-                      backtracie_frame_filename_rbstr(prev_ruby_loc, 1, false),
-                      backtracie_frame_name_rbstr(raw_loc),
-                      debug_raw_location(raw_loc));
+  // If raw_loc != prev_ruby_loc, that means this location is a cfunc, and not a
+  // ruby frame; so, it doesn't _actually_ have a path. For compatability with
+  // Thread#backtrace et. al., we return the frame of the previous
+  // actually-a-ruby-frame location. When we do that, we set a flag
+  // path_is_synthetic on the location so that interested callers can know if
+  // that's the case.
+  VALUE filename_abs;
+  VALUE filename_rel;
+  VALUE line_number;
+  VALUE path_is_synthetic;
+  if (prev_ruby_loc) {
+    filename_abs = backtracie_frame_filename_rbstr(prev_ruby_loc, true);
+    filename_rel = backtracie_frame_filename_rbstr(prev_ruby_loc, false);
+    line_number = INT2NUM(backtracie_frame_line_number(prev_ruby_loc));
+    path_is_synthetic = (raw_loc != prev_ruby_loc) ? Qtrue : Qfalse;
+
+  } else {
+    filename_abs = rb_str_new2("(in native code)");
+    filename_rel = rb_str_dup(filename_abs);
+    line_number = INT2NUM(0);
+    path_is_synthetic = Qtrue;
+  }
+
+  return new_location(filename_abs, backtracie_frame_label_rbstr(raw_loc, true),
+                      backtracie_frame_label_rbstr(raw_loc, false), line_number,
+                      filename_rel, backtracie_frame_name_rbstr(raw_loc),
+                      path_is_synthetic, debug_raw_location(raw_loc));
 }
 
 static VALUE debug_raw_location(const raw_location *the_location) {

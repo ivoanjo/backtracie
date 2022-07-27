@@ -696,23 +696,10 @@ RSpec.describe Backtracie do
     let(:backtracie_backtrace) { Backtracie::TestHelpers.backtracie_backtrace_from_thread }
     let(:stdlib_backtrace) { Backtracie::TestHelpers.stdlib_backtrace_from_thread }
 
-    it 'returns something sensible for the top frame' do
-      skip 'What should the behaviour here be?'
-      puts 'BACKTRACIE_BT:'
-      pp backtracie_backtrace
-      # Currently prints something like:
-      # [#<Backtracie::Location:0x00007f450c0ccc38
-      #   @absolute_path=nil,
-      #   @base_label="backtrace_locations",
-      #   @debug={:ruby_frame?=>false, :self_is_real_self?=>true, :rb_profile_frames=>nil, :self_or_self_class=>Backtracie, :pc=>0, :cfunc_function_info=>nil},
-      #   @label="backtrace_locations",
-      #   @lineno=0,
-      #   @path=nil,
-      #   @qualified_method_name="Backtracie.backtrace_locations">]
-      puts 'STD_BT:'
-      pp stdlib_backtrace
-      # Currently prints something like:
-      # ["/home/kj/.rbenv/versions/3.1.2/lib/ruby/gems/3.1.0/gems/rspec-core-3.11.0/exe/rspec:in `backtrace_locations'"]
+    it 'returns "(in native func) for the top frame' do
+      expect(backtracie_backtrace[0].absolute_path).to eq "(in native code)"
+      expect(backtracie_backtrace[0].lineno).to eq 0
+      expect(backtracie_backtrace[0].path_is_synthetic).to eq true
     end
   end
 end

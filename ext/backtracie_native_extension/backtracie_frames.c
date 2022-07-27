@@ -162,14 +162,12 @@ static void mod_to_s_singleton(VALUE klass, strbuilder_t *strout);
 static void mod_to_s(VALUE klass, strbuilder_t *strout);
 static void method_qualifier(const raw_location *loc, strbuilder_t *strout);
 static void method_name(const raw_location *loc, strbuilder_t *strout);
-static bool frame_filename(const raw_location *loc, size_t loc_len,
-                           bool absolute, strbuilder_t *strout);
+static bool frame_filename(const raw_location *loc, bool absolute,
+                           strbuilder_t *strout);
 static bool iseq_path(const rb_iseq_t *iseq, bool absolute,
                       strbuilder_t *strout);
 static int frame_label(const raw_location *loc, bool base,
                        strbuilder_t *strout);
-static const raw_location *prev_ruby_location(const raw_location *loc,
-                                              size_t loc_len);
 static int calc_lineno(const rb_iseq_t *iseq, const void *pc);
 static const rb_callable_method_entry_t *
 backtracie_vm_frame_method_entry(const rb_control_frame_t *cfp);
@@ -339,13 +337,8 @@ bool backtracie_capture_frame_for_thread(VALUE thread, int frame_index,
 #endif
 }
 
-int backtracie_frame_line_number(const raw_location *loc, size_t loc_len) {
-  const raw_location *prev_rbframe = prev_ruby_location(loc, loc_len);
-  if (prev_rbframe) {
-    return calc_lineno((rb_iseq_t *)prev_rbframe->iseq, prev_rbframe->pc);
-  } else {
-    return 0;
-  }
+int backtracie_frame_line_number(const raw_location *loc) {
+  return calc_lineno((rb_iseq_t *)loc->iseq, loc->pc);
 }
 
 size_t backtracie_frame_name_cstr(const raw_location *loc, char *buf,
@@ -371,22 +364,21 @@ VALUE backtracie_frame_name_rbstr(const raw_location *loc) {
   return ret;
 }
 
-size_t backtracie_frame_filename_cstr(const raw_location *loc, size_t loc_len,
-                                      bool absolute, char *buf, size_t buflen) {
+size_t backtracie_frame_filename_cstr(const raw_location *loc, bool absolute,
+                                      char *buf, size_t buflen) {
   strbuilder_t builder;
   strbuilder_init(&builder, buf, buflen);
 
-  frame_filename(loc, loc_len, absolute, &builder);
+  frame_filename(loc, absolute, &builder);
 
   return builder.attempted_size;
 }
 
-VALUE backtracie_frame_filename_rbstr(const raw_location *loc, size_t loc_len,
-                                      bool absolute) {
+VALUE backtracie_frame_filename_rbstr(const raw_location *loc, bool absolute) {
   strbuilder_t builder;
   strbuilder_init_growable(&builder, 256);
 
-  bool fname_found = frame_filename(loc, loc_len, absolute, &builder);
+  bool fname_found = frame_filename(loc, absolute, &builder);
 
   VALUE ret = Qnil;
   if (fname_found) {
@@ -396,15 +388,9 @@ VALUE backtracie_frame_filename_rbstr(const raw_location *loc, size_t loc_len,
   return ret;
 }
 
-static bool frame_filename(const raw_location *loc, size_t loc_len,
-                           bool absolute, strbuilder_t *strout) {
-  const raw_location *prev_rbframe = prev_ruby_location(loc, loc_len);
-  if (prev_rbframe) {
-    return iseq_path((const rb_iseq_t *)prev_rbframe->iseq, absolute, strout);
-  } else {
-    // Couldn't find a ruby frame below loc in the location list
-    return false;
-  }
+static bool frame_filename(const raw_location *loc, bool absolute,
+                           strbuilder_t *strout) {
+  return iseq_path((const rb_iseq_t *)loc->iseq, absolute, strout);
 }
 
 size_t backtracie_frame_label_cstr(const raw_location *loc, bool base,
@@ -646,20 +632,6 @@ static void method_name(const raw_location *loc, strbuilder_t *strout) {
   } else {
     BACKTRACIE_ASSERT_FAIL("backtracie: don't know how to set method name");
   }
-}
-
-static const raw_location *prev_ruby_location(const raw_location *loc,
-                                              size_t loc_len) {
-  for (size_t i = 0; i < loc_len; i++) {
-    // use_loc will == loc on the first iteration of the loop.
-    // There will be exactly one loop iteration max if loc_len == 1
-    const raw_location *use_loc = &loc[i];
-    if (use_loc->is_ruby_frame) {
-      return use_loc;
-    }
-  }
-  // Couldn't find a ruby frame below loc in the location list
-  return NULL;
 }
 
 // This is mostly a reimplementation of pathobj_path from vm_core.h
