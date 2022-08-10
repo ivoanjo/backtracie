@@ -177,4 +177,70 @@ raw_location *backtracie_frame_wrapper_frames(VALUE wrapper);
 BACKTRACIE_API
 int *backtracie_frame_wrapper_len(VALUE wrapper);
 
+// ========= "Minimal" API ========
+// This part of the API defines a "minimal" version of raw_location, called
+// minimal_location_t. The problem this solves is that marking the iseq &
+// callable method entry stored on the raw_location struct can actually mark a
+// whole lot of memory, but only a small amount of those things are actually
+// needed to compute the method name.
+
+typedef struct {
+  // 1 -> ruby frame / 0 -> cfunc frame
+  uint16_t is_ruby_frame : 1;
+  // What is in the method_quaalifier field?
+  // 0 -> rb_class_of(the VALUE the method was called on)
+  // 1 -> the VALUE the method was called on
+  // 2 -> the class that the callable_method_entry is defined on.
+  uint16_t method_qualifier_contents : 2;
+  // 1 means the "method name" union contains a CME method ID, 0 means it
+  // contains a frame base_label.
+  uint16_t has_cme_method_id : 1;
+  // 1 means iseq_type is populated
+  uint16_t has_iseq_type : 1;
+
+  // Comes from iseq->body->type; is an iseq_type enum.
+  uint16_t iseq_type;
+
+  // Line number - we calculate this at capture time because it's fast, and it
+  // saves us from storing the iseq.
+  uint32_t line_number;
+
+  // Contains either the callable method entry ID or the iseq base label. The
+  // former if has_cme_method_id is set, the latter if not.
+  // If has_cme_method_id is set, this need not be marked, but if it is NOT set,
+  // then method_name.base_label needs to be marked.
+  union {
+    // Comes from callable_method_entry->def->original_id
+    ID cme_method_id;
+    // Comes from iseq->body->location.base_label
+    VALUE base_label;
+  } method_name;
+
+  // VALUE for the filename (abs), or Qnil
+  // Needs to be marked if not Qnil.
+  VALUE filename;
+
+  // See method_qualifier_contents flag for possible values that can be in here.
+  // Needs to be marked if not Qniil.
+  VALUE method_qualifier;
+} minimal_location_t;
+
+// This is like backtracie_capture_frame_for_thread, but captures a
+// minimal_location_t instead of a raw_location.
+BACKTRACIE_API
+bool backtracie_capture_minimal_frame_for_thread(VALUE thread, int frame_index,
+                                                 minimal_location_t *loc);
+
+// This is like backtracie_frame_name_cstr, but works on a minimal_location_t
+// instead of a raw_location
+BACKTRACIE_API
+size_t backtracie_minimal_frame_name_cstr(const minimal_location_t *loc,
+                                          char *buf, size_t buflen);
+
+// This is like backtracie_frame_filename_cstr, but works on a
+// minimal_location_t instead of a raw_location. Note that this always returns
+// the absolute filename.
+BACKTRACIE_API
+size_t backtracie_minimal_frame_filename_cstr(const minimal_location_t *loc,
+                                              char *buf, size_t buflen);
 #endif

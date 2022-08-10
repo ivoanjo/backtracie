@@ -202,17 +202,24 @@ static bool object_has_special_bt_handling(VALUE obj) {
   return obj == backtracie_main_object_instance || obj == rb_mRubyVMFrozenCore;
 }
 
+static bool iseq_type_is_block_or_eval(enum iseq_type type) {
+  return type == ISEQ_TYPE_EVAL || type == ISEQ_TYPE_BLOCK;
+}
+
+static bool iseq_type_is_eval(enum iseq_type type) {
+  return type == ISEQ_TYPE_EVAL;
+}
+
 static bool iseq_is_block_or_eval(const rb_iseq_t *iseq) {
   if (!iseq)
     return false;
-  return iseq->body->type == ISEQ_TYPE_BLOCK ||
-         iseq->body->type == ISEQ_TYPE_EVAL;
+  return iseq_type_is_block_or_eval(iseq->body->type);
 }
 
 static bool iseq_is_eval(const rb_iseq_t *iseq) {
   if (!iseq)
     return false;
-  return iseq->body->type == ISEQ_TYPE_EVAL;
+  return iseq_type_is_eval(iseq->body->type);
 }
 
 static bool class_or_module_or_iclass(VALUE obj) {
@@ -554,23 +561,16 @@ static void mod_to_s(VALUE klass, strbuilder_t *strout) {
   strbuilder_append_value(strout, klass_name);
 }
 
-static void method_qualifier(const raw_location *loc, strbuilder_t *strout) {
-  rb_callable_method_entry_t *cme =
-      (rb_callable_method_entry_t *)loc->callable_method_entry;
-  VALUE defined_class = cme ? cme->defined_class : Qnil;
-  VALUE class_of_defined_class =
-      RTEST(defined_class) ? rb_class_of(defined_class) : Qnil;
-  VALUE self = loc->self_is_real_self ? loc->self_or_self_class : Qundef;
-  VALUE self_class = loc->self_is_real_self
-                         ? rb_class_of(loc->self_or_self_class)
-                         : loc->self_or_self_class;
-  VALUE method_target = RTEST(defined_class) ? defined_class : self_class;
-
+static void method_qualifier_impl(VALUE defined_class,
+                                  VALUE class_of_defined_class, VALUE self,
+                                  VALUE self_class, VALUE method_target,
+                                  strbuilder_t *strout) {
   if (self == backtracie_main_object_instance) {
     strbuilder_append(strout, "Object$<main>#");
   } else if (self == rb_mRubyVMFrozenCore) {
     strbuilder_append(strout, "RubyVM::FrozenCore#");
-  } else if (RTEST(class_of_defined_class) &&
+  } else if (class_of_defined_class != Qundef &&
+             RTEST(class_of_defined_class) &&
              FL_TEST(class_of_defined_class, RMODULE_IS_REFINEMENT)) {
     // The method being called is defined on a refinement.
     VALUE refinement_module = class_of_defined_class;
@@ -589,6 +589,66 @@ static void method_qualifier(const raw_location *loc, strbuilder_t *strout) {
   }
 }
 
+static void method_qualifier(const raw_location *loc, strbuilder_t *strout) {
+  rb_callable_method_entry_t *cme =
+      (rb_callable_method_entry_t *)loc->callable_method_entry;
+  VALUE defined_class = cme ? cme->defined_class : Qnil;
+  VALUE class_of_defined_class =
+      RTEST(defined_class) ? rb_class_of(defined_class) : Qnil;
+  VALUE self = loc->self_is_real_self ? loc->self_or_self_class : Qundef;
+  VALUE self_class = loc->self_is_real_self
+                         ? rb_class_of(loc->self_or_self_class)
+                         : loc->self_or_self_class;
+  VALUE method_target = RTEST(defined_class) ? defined_class : self_class;
+
+  method_qualifier_impl(defined_class, class_of_defined_class, self, self_class,
+                        method_target, strout);
+}
+
+static void method_name_impl(ID method_id, VALUE base_label,
+                             enum iseq_type iseq_type, VALUE self,
+                             strbuilder_t *strout) {
+
+  if (method_id) {
+    // With a callable method entry, things are simple; just use that.
+    VALUE method_name = rb_id2str(method_id);
+    strbuilder_append_value(strout, method_name);
+    if (iseq_type_is_block_or_eval(iseq_type)) {
+      strbuilder_append(strout, "{block}");
+    }
+  } else {
+    // With no CME, we _DO NOT_ want to use iseq->base_label if we're a block,
+    // because otherwise it will print something like "block in (something)". In
+    // fact, using the iseq->base_label is pretty much a last resort. If we
+    // manage to write _anything_ else in our backtrace, we won't use it.
+    bool did_write_anything = false;
+    if (self != Qundef) {
+      if (RB_TYPE_P(self, T_CLASS)) {
+        // No CME, and self being a class/module, means we're executing code
+        // inside a class Foo; ...; end;
+        strbuilder_append(strout, "{class exec}");
+        did_write_anything = true;
+      }
+      if (RB_TYPE_P(self, T_MODULE)) {
+        strbuilder_append(strout, "{module exec}");
+        did_write_anything = true;
+      }
+    }
+    if (iseq_type_is_block_or_eval(iseq_type)) {
+      strbuilder_append(strout, "{block}");
+      did_write_anything = true;
+    }
+    if (!did_write_anything) {
+      // As a fallback, use whatever is on the base_label.
+      if (base_label != Qundef && RTEST(base_label)) {
+        strbuilder_append_value(strout, base_label);
+      } else {
+        BACKTRACIE_ASSERT_FAIL("backtracie: don't know how to set method name");
+      }
+    }
+  }
+}
+
 static void method_name(const raw_location *loc, strbuilder_t *strout) {
   rb_callable_method_entry_t *cme = NULL;
   rb_iseq_t *iseq = NULL;
@@ -599,43 +659,12 @@ static void method_name(const raw_location *loc, strbuilder_t *strout) {
     iseq = (rb_iseq_t *)loc->iseq;
   }
 
-  if (cme) {
-    // With a callable method entry, things are simple; just use that.
-    VALUE method_name = rb_id2str(cme->called_id);
-    strbuilder_append_value(strout, method_name);
-    if (iseq_is_block_or_eval(iseq)) {
-      strbuilder_append(strout, "{block}");
-    }
-  } else if (iseq) {
-    // With no CME, we _DO NOT_ want to use iseq->base_label if we're a block,
-    // because otherwise it will print something like "block in (something)". In
-    // fact, using the iseq->base_label is pretty much a last resort. If we
-    // manage to write _anything_ else in our backtrace, we won't use it.
-    bool did_write_anything = false;
-    if (loc->self_is_real_self) {
-      if (RB_TYPE_P(loc->self_or_self_class, T_CLASS)) {
-        // No CME, and self being a class/module, means we're executing code
-        // inside a class Foo; ...; end;
-        strbuilder_append(strout, "{class exec}");
-        did_write_anything = true;
-      }
-      if (RB_TYPE_P(loc->self_or_self_class, T_MODULE)) {
-        strbuilder_append(strout, "{module exec}");
-        did_write_anything = true;
-      }
-    }
-    if (iseq_is_block_or_eval(iseq)) {
-      strbuilder_append(strout, "{block}");
-      did_write_anything = true;
-    }
-    if (!did_write_anything) {
-      // As a fallback, use whatever is on the base_label.
-      VALUE location_name = iseq->body->location.base_label;
-      strbuilder_append_value(strout, location_name);
-    }
-  } else {
-    BACKTRACIE_ASSERT_FAIL("backtracie: don't know how to set method name");
-  }
+  ID method_id = cme ? cme->called_id : 0;
+  VALUE base_label = iseq ? iseq->body->location.base_label : Qundef;
+  enum iseq_type iseq_type = iseq ? iseq->body->type : 0;
+  VALUE self = loc->self_is_real_self ? loc->self_or_self_class : Qundef;
+
+  method_name_impl(method_id, base_label, iseq_type, self, strout);
 }
 
 // This is mostly a reimplementation of pathobj_path from vm_core.h
@@ -812,4 +841,111 @@ static void backtracie_frame_wrapper_free(void *ptr) {
 static size_t backtracie_frame_wrapper_memsize(const void *ptr) {
   const frame_wrapper_t *frame_data = (const frame_wrapper_t *)ptr;
   return sizeof(frame_wrapper_t) + sizeof(raw_location) * frame_data->capa;
+}
+
+bool backtracie_capture_minimal_frame_for_thread(VALUE thread, int frame_index,
+                                                 minimal_location_t *loc) {
+  raw_location raw_loc;
+  bool ret = backtracie_capture_frame_for_thread(thread, frame_index, &raw_loc);
+  if (!ret) {
+    return ret;
+  }
+
+  loc->is_ruby_frame = raw_loc.is_ruby_frame;
+
+  loc->has_cme_method_id = RTEST(raw_loc.callable_method_entry) ? 1 : 0;
+  if (RTEST(raw_loc.callable_method_entry)) {
+    loc->method_name.cme_method_id =
+        ((rb_callable_method_entry_t *)raw_loc.callable_method_entry)
+            ->def->original_id;
+  } else if (RTEST(raw_loc.iseq)) {
+    loc->method_name.base_label =
+        ((rb_iseq_t *)raw_loc.iseq)->body->location.base_label;
+  } else {
+    loc->method_name.base_label = Qnil;
+  }
+
+  if (RTEST(raw_loc.iseq)) {
+    loc->has_iseq_type = 1;
+    loc->iseq_type = ((rb_iseq_t *)raw_loc.iseq)->body->type;
+    loc->line_number = calc_lineno((rb_iseq_t *)raw_loc.iseq, raw_loc.pc);
+  } else {
+    loc->has_iseq_type = 0;
+    loc->line_number = 0;
+  }
+
+  if (RTEST(raw_loc.callable_method_entry)) {
+    loc->method_qualifier_contents = 2;
+    loc->method_qualifier =
+        ((rb_callable_method_entry_t *)raw_loc.callable_method_entry)
+            ->defined_class;
+  } else if (raw_loc.self_is_real_self) {
+    loc->method_qualifier_contents = 1;
+    loc->method_qualifier = raw_loc.self_or_self_class;
+  } else {
+    loc->method_qualifier_contents = 0;
+    loc->method_qualifier = raw_loc.self_or_self_class;
+  }
+
+  return ret;
+}
+
+static void method_qualifier_minimal(const minimal_location_t *loc,
+                                     strbuilder_t *strout) {
+  VALUE defined_class = Qundef;
+  VALUE class_of_defined_class = Qundef;
+  VALUE self = Qundef;
+  VALUE self_class = Qundef;
+  VALUE method_target = Qundef;
+
+  if (loc->method_qualifier_contents == 2) {
+    // method_qualifier contains the cme->defined_class
+    defined_class = loc->method_qualifier;
+    class_of_defined_class = rb_class_of(defined_class);
+    method_target = defined_class;
+  } else if (loc->method_qualifier_contents == 1) {
+    // method qualifier contains the real self object.
+    self = loc->method_qualifier;
+    self_class = rb_class_of(self);
+    method_target = self_class;
+  } else if (loc->method_qualifier_contents == 0) {
+    // method qualifier contains the class of the self object.
+    self_class = loc->method_qualifier;
+    method_target = self_class;
+  }
+  method_qualifier_impl(defined_class, class_of_defined_class, self, self_class,
+                        method_target, strout);
+}
+
+static void method_name_minimal(const minimal_location_t *loc,
+                                strbuilder_t *strout) {
+  ID method_id = loc->has_cme_method_id ? loc->method_name.cme_method_id : 0;
+  VALUE base_label =
+      loc->has_cme_method_id ? Qundef : loc->method_name.base_label;
+  enum iseq_type iseq_type = loc->has_iseq_type ? loc->iseq_type : 0;
+  VALUE self =
+      loc->method_qualifier_contents == 1 ? loc->method_qualifier : Qundef;
+
+  method_name_impl(method_id, base_label, iseq_type, self, strout);
+}
+
+size_t backtracie_minimal_frame_name_cstr(const minimal_location_t *loc,
+                                          char *buf, size_t buflen) {
+
+  strbuilder_t builder;
+  strbuilder_init(&builder, buf, buflen);
+  method_qualifier_minimal(loc, &builder);
+  method_name_minimal(loc, &builder);
+  return builder.attempted_size;
+}
+
+size_t backtracie_minimal_frame_filename_cstr(const minimal_location_t *loc,
+                                              char *buf, size_t buflen) {
+
+  strbuilder_t builder;
+  strbuilder_init(&builder, buf, buflen);
+  if (RTEST(loc->filename)) {
+    strbuilder_append_value(&builder, loc->filename);
+  }
+  return builder.attempted_size;
 }
