@@ -19,5 +19,5 @@
 # along with backtracie.  If not, see <http://www.gnu.org/licenses/>.
 
 module Backtracie
-  VERSION = "0.3.1.dev"
+  VERSION = "1.0.0"
 end
