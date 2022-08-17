@@ -155,13 +155,16 @@
 // This is managed in backtracie.c
 extern VALUE backtracie_main_object_instance;
 extern VALUE backtracie_frame_wrapper_class;
-
+static void raw_location_to_minimal_location(const raw_location *raw_loc,
+                                             minimal_location_t *min_loc);
 static void mod_to_s_anon(VALUE klass, strbuilder_t *strout);
 static void mod_to_s_refinement(VALUE klass, strbuilder_t *strout);
 static void mod_to_s_singleton(VALUE klass, strbuilder_t *strout);
 static void mod_to_s(VALUE klass, strbuilder_t *strout);
-static void method_qualifier(const raw_location *loc, strbuilder_t *strout);
-static void method_name(const raw_location *loc, strbuilder_t *strout);
+static void minimal_location_method_qualifier(const minimal_location_t *loc,
+                                              strbuilder_t *strout);
+static void minimal_location_method_name(const minimal_location_t *loc,
+                                         strbuilder_t *strout);
 static bool frame_filename(const raw_location *loc, bool absolute,
                            strbuilder_t *strout);
 static bool iseq_path(const rb_iseq_t *iseq, bool absolute,
@@ -202,17 +205,24 @@ static bool object_has_special_bt_handling(VALUE obj) {
   return obj == backtracie_main_object_instance || obj == rb_mRubyVMFrozenCore;
 }
 
+static bool iseq_type_is_block_or_eval(enum iseq_type type) {
+  return type == ISEQ_TYPE_EVAL || type == ISEQ_TYPE_BLOCK;
+}
+
+static bool iseq_type_is_eval(enum iseq_type type) {
+  return type == ISEQ_TYPE_EVAL;
+}
+
 static bool iseq_is_block_or_eval(const rb_iseq_t *iseq) {
   if (!iseq)
     return false;
-  return iseq->body->type == ISEQ_TYPE_BLOCK ||
-         iseq->body->type == ISEQ_TYPE_EVAL;
+  return iseq_type_is_block_or_eval(iseq->body->type);
 }
 
 static bool iseq_is_eval(const rb_iseq_t *iseq) {
   if (!iseq)
     return false;
-  return iseq->body->type == ISEQ_TYPE_EVAL;
+  return iseq_type_is_eval(iseq->body->type);
 }
 
 static bool class_or_module_or_iclass(VALUE obj) {
@@ -350,8 +360,10 @@ size_t backtracie_frame_name_cstr(const raw_location *loc, char *buf,
   strbuilder_t builder;
   strbuilder_init(&builder, buf, buflen);
 
-  method_qualifier(loc, &builder);
-  method_name(loc, &builder);
+  minimal_location_t min_loc;
+  raw_location_to_minimal_location(loc, &min_loc);
+  minimal_location_method_qualifier(&min_loc, &builder);
+  minimal_location_method_name(&min_loc, &builder);
 
   return builder.attempted_size;
 }
@@ -360,8 +372,10 @@ VALUE backtracie_frame_name_rbstr(const raw_location *loc) {
   strbuilder_t builder;
   strbuilder_init_growable(&builder, 256);
 
-  method_qualifier(loc, &builder);
-  method_name(loc, &builder);
+  minimal_location_t min_loc;
+  raw_location_to_minimal_location(loc, &min_loc);
+  minimal_location_method_qualifier(&min_loc, &builder);
+  minimal_location_method_name(&min_loc, &builder);
 
   VALUE ret = strbuilder_to_value(&builder);
   strbuilder_free_growable(&builder);
@@ -470,6 +484,50 @@ static int frame_label(const raw_location *loc, bool base,
   return 1;
 }
 
+static void raw_location_to_minimal_location(const raw_location *raw_loc,
+                                             minimal_location_t *min_loc) {
+
+  min_loc->is_ruby_frame = raw_loc->is_ruby_frame;
+  if (RTEST(raw_loc->callable_method_entry)) {
+    min_loc->method_name_contents = BACKTRACIE_METHOD_NAME_CONTENTS_CME_ID;
+    min_loc->method_name.cme_method_id =
+        ((rb_callable_method_entry_t *)raw_loc->callable_method_entry)
+            ->called_id;
+  } else if (RTEST(raw_loc->iseq)) {
+    min_loc->method_name_contents = BACKTRACIE_METHOD_NAME_CONTENTS_BASE_LABEL;
+    min_loc->method_name.base_label =
+        ((rb_iseq_t *)raw_loc->iseq)->body->location.base_label;
+  } else {
+    min_loc->method_name_contents = BACKTRACIE_METHOD_NAME_CONTENTS_BASE_LABEL;
+    min_loc->method_name.base_label = Qnil;
+  }
+
+  if (RTEST(raw_loc->iseq)) {
+    min_loc->has_iseq_type = 1;
+    min_loc->iseq_type = ((rb_iseq_t *)raw_loc->iseq)->body->type;
+    min_loc->line_number = calc_lineno((rb_iseq_t *)raw_loc->iseq, raw_loc->pc);
+  } else {
+    min_loc->has_iseq_type = 0;
+    min_loc->line_number = 0;
+  }
+
+  if (RTEST(raw_loc->self_is_real_self)) {
+    min_loc->method_qualifier_contents =
+        BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF;
+    min_loc->method_qualifier.self = raw_loc->self_or_self_class;
+  } else if (RTEST(raw_loc->callable_method_entry)) {
+    min_loc->method_qualifier_contents =
+        BACKTRACIE_METHOD_QUALIFIER_CONTENTS_CME_CLASS;
+    min_loc->method_qualifier.cme_defined_class =
+        ((rb_callable_method_entry_t *)raw_loc->callable_method_entry)
+            ->defined_class;
+  } else {
+    min_loc->method_qualifier_contents =
+        BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF_CLASS;
+    min_loc->method_qualifier.self_class = raw_loc->self_or_self_class;
+  }
+}
+
 static void mod_to_s_anon(VALUE klass, strbuilder_t *strout) {
   // Anonymous module/class - print the name of the first non-anonymous super.
   // something like "#{klazz.ancestors.map(&:name).compact.first}$anonymous"
@@ -554,87 +612,104 @@ static void mod_to_s(VALUE klass, strbuilder_t *strout) {
   strbuilder_append_value(strout, klass_name);
 }
 
-static void method_qualifier(const raw_location *loc, strbuilder_t *strout) {
-  rb_callable_method_entry_t *cme =
-      (rb_callable_method_entry_t *)loc->callable_method_entry;
-  VALUE defined_class = cme ? cme->defined_class : Qnil;
-  VALUE class_of_defined_class =
-      RTEST(defined_class) ? rb_class_of(defined_class) : Qnil;
-  VALUE self = loc->self_is_real_self ? loc->self_or_self_class : Qundef;
-  VALUE self_class = loc->self_is_real_self
-                         ? rb_class_of(loc->self_or_self_class)
-                         : loc->self_or_self_class;
-  VALUE method_target = RTEST(defined_class) ? defined_class : self_class;
-
-  if (self == backtracie_main_object_instance) {
-    strbuilder_append(strout, "Object$<main>#");
-  } else if (self == rb_mRubyVMFrozenCore) {
-    strbuilder_append(strout, "RubyVM::FrozenCore#");
-  } else if (RTEST(class_of_defined_class) &&
-             FL_TEST(class_of_defined_class, RMODULE_IS_REFINEMENT)) {
-    // The method being called is defined on a refinement.
-    VALUE refinement_module = class_of_defined_class;
-    mod_to_s_refinement(refinement_module, strout);
-    strbuilder_append(strout, "#");
-  } else if (self != Qundef && class_or_module_or_iclass(self)) {
-    // Means the receiver itself is a module or class, i.e. we have
-    // SomeModule.foo
-    mod_to_s(self, strout);
-    strbuilder_append(strout, ".");
-  } else {
-    // Means the receiver is _not_ a module/class, so we print the name of the
-    // class that the method is defined on.
-    mod_to_s(method_target, strout);
-    strbuilder_append(strout, "#");
+static void minimal_location_method_qualifier(const minimal_location_t *loc,
+                                              strbuilder_t *strout) {
+  // First, check if it's a special object.
+  if (loc->method_qualifier_contents ==
+      BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF) {
+    if (loc->method_qualifier.self == backtracie_main_object_instance) {
+      strbuilder_append(strout, "Object$<main>#");
+      return;
+    }
+    if (loc->method_qualifier.self == rb_mRubyVMFrozenCore) {
+      strbuilder_append(strout, "RubyVM::FrozenCore#");
+      return;
+    }
   }
+
+  // Next, check if it's a refinement.
+  if (loc->method_qualifier_contents ==
+      BACKTRACIE_METHOD_QUALIFIER_CONTENTS_CME_CLASS) {
+    VALUE class_of_defined_class =
+        rb_class_of(loc->method_qualifier.cme_defined_class);
+    if (RTEST(class_of_defined_class) &&
+        FL_TEST(class_of_defined_class, RMODULE_IS_REFINEMENT)) {
+      // The method being called is defined on a refinement.
+      mod_to_s_refinement(class_of_defined_class, strout);
+      strbuilder_append(strout, "#");
+      return;
+    }
+  }
+
+  // Next, check if the method receiver is itself a class or module.
+  if (loc->method_qualifier_contents ==
+      BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF) {
+    if (class_or_module_or_iclass(loc->method_qualifier.self)) {
+      // We have something like SomeModule.foo being called directly like that,
+      // without an instance.
+      mod_to_s(loc->method_qualifier.self, strout);
+      strbuilder_append(strout, ".");
+      return;
+    }
+  }
+
+  // Means the method receiver is _not_ a module/class; so, print the name of
+  // the class that the method is defined on.
+  VALUE method_target;
+  switch (loc->method_qualifier_contents) {
+  case BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF:
+    method_target = rb_class_of(loc->method_qualifier.self);
+    break;
+  case BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF_CLASS:
+    method_target = loc->method_qualifier.self_class;
+    break;
+  case BACKTRACIE_METHOD_QUALIFIER_CONTENTS_CME_CLASS:
+    method_target = loc->method_qualifier.cme_defined_class;
+    break;
+  }
+
+  mod_to_s(method_target, strout);
+  strbuilder_append(strout, "#");
 }
 
-static void method_name(const raw_location *loc, strbuilder_t *strout) {
-  rb_callable_method_entry_t *cme = NULL;
-  rb_iseq_t *iseq = NULL;
-  if (RTEST(loc->callable_method_entry)) {
-    cme = (rb_callable_method_entry_t *)loc->callable_method_entry;
-  }
-  if (RTEST(loc->iseq)) {
-    iseq = (rb_iseq_t *)loc->iseq;
-  }
-
-  if (cme) {
+static void minimal_location_method_name(const minimal_location_t *loc,
+                                         strbuilder_t *strout) {
+  if (loc->method_name_contents == BACKTRACIE_METHOD_NAME_CONTENTS_CME_ID) {
     // With a callable method entry, things are simple; just use that.
-    VALUE method_name = rb_id2str(cme->called_id);
+    VALUE method_name = rb_id2str(loc->method_name.cme_method_id);
     strbuilder_append_value(strout, method_name);
-    if (iseq_is_block_or_eval(iseq)) {
+    if (loc->has_iseq_type && iseq_type_is_block_or_eval(loc->iseq_type)) {
       strbuilder_append(strout, "{block}");
     }
-  } else if (iseq) {
+  } else {
     // With no CME, we _DO NOT_ want to use iseq->base_label if we're a block,
     // because otherwise it will print something like "block in (something)". In
     // fact, using the iseq->base_label is pretty much a last resort. If we
     // manage to write _anything_ else in our backtrace, we won't use it.
     bool did_write_anything = false;
-    if (loc->self_is_real_self) {
-      if (RB_TYPE_P(loc->self_or_self_class, T_CLASS)) {
+    if (loc->method_qualifier_contents ==
+        BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF) {
+      if (RB_TYPE_P(loc->method_qualifier.self, T_CLASS)) {
         // No CME, and self being a class/module, means we're executing code
         // inside a class Foo; ...; end;
         strbuilder_append(strout, "{class exec}");
         did_write_anything = true;
       }
-      if (RB_TYPE_P(loc->self_or_self_class, T_MODULE)) {
+      if (RB_TYPE_P(loc->method_qualifier.self, T_MODULE)) {
         strbuilder_append(strout, "{module exec}");
         did_write_anything = true;
       }
     }
-    if (iseq_is_block_or_eval(iseq)) {
+    if (loc->has_iseq_type && iseq_type_is_block_or_eval(loc->iseq_type)) {
       strbuilder_append(strout, "{block}");
       did_write_anything = true;
     }
     if (!did_write_anything) {
       // As a fallback, use whatever is on the base_label.
-      VALUE location_name = iseq->body->location.base_label;
-      strbuilder_append_value(strout, location_name);
+      // n.b. method_name_contents is guaranteed to be set to
+      // CONTENTS_BASE_LABEL in this branch.
+      strbuilder_append_value(strout, loc->method_name.base_label);
     }
-  } else {
-    BACKTRACIE_ASSERT_FAIL("backtracie: don't know how to set method name");
   }
 }
 
@@ -812,4 +887,37 @@ static void backtracie_frame_wrapper_free(void *ptr) {
 static size_t backtracie_frame_wrapper_memsize(const void *ptr) {
   const frame_wrapper_t *frame_data = (const frame_wrapper_t *)ptr;
   return sizeof(frame_wrapper_t) + sizeof(raw_location) * frame_data->capa;
+}
+
+bool backtracie_capture_minimal_frame_for_thread(VALUE thread, int frame_index,
+                                                 minimal_location_t *loc) {
+  raw_location raw_loc;
+  bool ret = backtracie_capture_frame_for_thread(thread, frame_index, &raw_loc);
+  if (!ret) {
+    return ret;
+  }
+  raw_location_to_minimal_location(&raw_loc, loc);
+
+  return ret;
+}
+
+size_t backtracie_minimal_frame_name_cstr(const minimal_location_t *loc,
+                                          char *buf, size_t buflen) {
+
+  strbuilder_t builder;
+  strbuilder_init(&builder, buf, buflen);
+  minimal_location_method_qualifier(loc, &builder);
+  minimal_location_method_name(loc, &builder);
+  return builder.attempted_size;
+}
+
+size_t backtracie_minimal_frame_filename_cstr(const minimal_location_t *loc,
+                                              char *buf, size_t buflen) {
+
+  strbuilder_t builder;
+  strbuilder_init(&builder, buf, buflen);
+  if (RTEST(loc->filename)) {
+    strbuilder_append_value(&builder, loc->filename);
+  }
+  return builder.attempted_size;
 }
