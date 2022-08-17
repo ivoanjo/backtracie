@@ -187,11 +187,15 @@ int *backtracie_frame_wrapper_len(VALUE wrapper);
 // These values define union descriminator values for minimal_location_t.
 // It's tempting to make this an enum, but apparently an enum in a bitfield is
 // implementation-defined behaviour.
-static const uint16_t BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF = 0;
-static const uint16_t BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF_CLASS = 1;
-static const uint16_t BACKTRACIE_METHOD_QUALIFIER_CONTENTS_CME_CLASS = 2;
-static const uint16_t BACKTRACIE_METHOD_NAME_CONTENTS_CME_ID = 0;
-static const uint16_t BACKTRACIE_METHOD_NAME_CONTENTS_BASE_LABEL = 1;
+// It would also be tempting to define these as "const uint16_t", but the
+// ancient version of mingw used to build for Ruby 2.3 on Windows doesn't like
+// using such a constant in a switch statement somehow (??).
+// So... #define's it is.
+#define BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF 0u
+#define BACKTRACIE_METHOD_QUALIFIER_CONTENTS_SELF_CLASS 1u
+#define BACKTRACIE_METHOD_QUALIFIER_CONTENTS_CME_CLASS 2u
+#define BACKTRACIE_METHOD_NAME_CONTENTS_CME_ID 0u
+#define BACKTRACIE_METHOD_NAME_CONTENTS_BASE_LABEL 1u
 
 typedef struct {
   // 1 -> ruby frame / 0 -> cfunc frame
