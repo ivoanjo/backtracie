@@ -139,6 +139,13 @@
 #include "public/backtracie.h"
 #include "strbuilder.h"
 
+#ifndef PRE_RB_ISEQ_TYPE
+// This was renamed for Ruby >= 3.2
+  #define RB_ISEQ_TYPE rb_iseq_type
+#else
+  #define RB_ISEQ_TYPE iseq_type
+#endif
+
 #ifdef PRE_EXECUTION_CONTEXT
 // The thread and its execution context were separated on Ruby 2.5; prior to
 // that, everything was part of the thread
@@ -205,11 +212,11 @@ static bool object_has_special_bt_handling(VALUE obj) {
   return obj == backtracie_main_object_instance || obj == rb_mRubyVMFrozenCore;
 }
 
-static bool iseq_type_is_block_or_eval(enum iseq_type type) {
+static bool iseq_type_is_block_or_eval(enum RB_ISEQ_TYPE type) {
   return type == ISEQ_TYPE_EVAL || type == ISEQ_TYPE_BLOCK;
 }
 
-static bool iseq_type_is_eval(enum iseq_type type) {
+static bool iseq_type_is_eval(enum RB_ISEQ_TYPE type) {
   return type == ISEQ_TYPE_EVAL;
 }
 

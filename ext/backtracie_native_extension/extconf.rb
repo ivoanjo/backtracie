@@ -42,6 +42,8 @@ $CFLAGS << ' ' << '-Werror-implicit-function-declaration'
 # NSIG is expected to be defined in signal.h.
 $CFLAGS << ' ' << '-std=gnu99' if RUBY_VERSION < '2.4'
 
+$CFLAGS << ' ' << '-DPRE_RB_ISEQ_TYPE' if RUBY_VERSION < '3.2'
+
 $CFLAGS << ' ' << '-DPRE_GC_MARK_MOVABLE' if RUBY_VERSION < '2.7'
 
 # Older Rubies don't have the MJIT header, see below for details
