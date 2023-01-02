@@ -111,7 +111,7 @@ RSpec.describe Backtracie do
 
       it do
         # On Ruby 2.3, this prints "Object$anonymous#backtraces_for_comparison{block}". Need to investigate.
-        pending "broken on Ruby 2.3" if RUBY_VERSION < '2.4'
+        pending "broken on Ruby 2.3" if RUBY_VERSION < "2.4"
         # This used to expect "${self.class.name}$singleton", but actually this is more correct - the
         # backtraces_for_comparison method is actually defined on a ::LetDefinitions class that's included
         # in the test class.
@@ -277,7 +277,6 @@ RSpec.describe Backtracie do
     end
 
     context "when sampling a tracepoint hitting define_method defined inside a block" do
-
       # This is a minimal (yes, believe it or not, I couldn't get it any smaller) reproduction of an issue I hit in
       # ruby_memprofiler_pprof. The situation there is:
       #     * You have a tracepoint bound to newobj, which is capturing backtraces of new object allocations
@@ -353,7 +352,7 @@ RSpec.describe Backtracie do
       end
     end
 
-    context 'when sampling a module extended hook' do
+    context "when sampling a module extended hook" do
       let(:test_method) do
         proc do |&block|
           $backtracie_global_block = block # rubocop:disable Style/GlobalVars
@@ -692,7 +691,7 @@ RSpec.describe Backtracie do
     end
   end
 
-  context 'when sampling a thread from rb_create_thread, with no ruby frames' do
+  context "when sampling a thread from rb_create_thread, with no ruby frames" do
     let(:backtracie_backtrace) { Backtracie::TestHelpers.backtracie_backtrace_from_thread }
 
     it 'returns "(in native func) for the top frame' do
@@ -701,10 +700,10 @@ RSpec.describe Backtracie do
       expect(backtracie_backtrace[0].path_is_synthetic).to eq true
     end
   end
-  context 'when sampling a thread from rb_create_thread, with no frames at all' do
+  context "when sampling a thread from rb_create_thread, with no frames at all" do
     let(:backtracie_backtrace) { Backtracie::TestHelpers.backtracie_backtrace_from_empty_thread }
 
-    it 'returns an empty array' do
+    it "returns an empty array" do
       expect(backtracie_backtrace).to be_empty
     end
   end

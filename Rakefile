@@ -20,7 +20,7 @@
 
 require "bundler/gem_tasks"
 require "rspec/core/rake_task"
-require "standard/rake" unless RUBY_VERSION < "2.5"
+require "standard/rake" unless RUBY_VERSION < "2.6"
 require "rake/extensiontask"
 
 Rake::ExtensionTask.new("backtracie_native_extension")
@@ -41,7 +41,7 @@ end
 task default: [
   :compile,
   :spec,
-  (:'standard:fix' unless RUBY_VERSION < "2.5")
+  (:"standard:fix" unless RUBY_VERSION < "2.6")
 ].compact
 
 desc "Test all supported Rubies in docker"

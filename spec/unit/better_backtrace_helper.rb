@@ -41,7 +41,7 @@ module BetterBacktrace
             tracepoint.defined_class.to_s,
             [Module, Class].include?(tracepoint.self&.class), # self_class_module_or_class?
             tracepoint.method_id,
-            (RUBY_VERSION >= "2.6.0" ? tracepoint.parameters : []),
+            ((RUBY_VERSION >= "2.6.0") ? tracepoint.parameters : []),
             tracepoint.path,
             tracepoint.lineno,
             tracepoint.defined_class&.singleton_class? == true, # defined_class_singleton_class?
@@ -89,7 +89,7 @@ module BetterBacktrace
             defined_class[(defined_class.index(":#<") + 3)..(defined_class.rindex(">") - 1)].split(":").first
           end
 
-        method_divider = instance_method || is_singleton ? "#" : "."
+        method_divider = (instance_method || is_singleton) ? "#" : "."
         singleton_suffix = is_singleton ? "$singleton" : ""
 
         full_signature = "#{class_or_module_name}#{singleton_suffix}#{method_divider}#{method_id}#{block_suffix}"
