@@ -673,6 +673,9 @@ static void minimal_location_method_qualifier(const minimal_location_t *loc,
   case BACKTRACIE_METHOD_QUALIFIER_CONTENTS_CME_CLASS:
     method_target = loc->method_qualifier.cme_defined_class;
     break;
+  default:
+    strbuilder_append(strout, "FIXME_SHOULD_NEVER_HAPPEN");
+    return;
   }
 
   mod_to_s(method_target, strout);
