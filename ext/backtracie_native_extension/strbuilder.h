@@ -14,7 +14,7 @@ typedef struct {
 } strbuilder_t;
 
 void strbuilder_append(strbuilder_t *str, const char *cat);
-void strbuilder_appendf(strbuilder_t *str, const char *fmt, ...);
+void strbuilder_appendf(strbuilder_t *str, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 void strbuilder_append_value(strbuilder_t *str, VALUE val);
 VALUE strbuilder_to_value(strbuilder_t *str);
 void strbuilder_init(strbuilder_t *str, char *buf, size_t bufsize);
