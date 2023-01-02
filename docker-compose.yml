@@ -82,6 +82,15 @@ services:
       - RSPEC_PROGRESS=true
     command:
       bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
+  ruby-3.2:
+    image: ruby:3.2
+    volumes:
+      - .:/app
+      - bundle-3.2:/usr/local/bundle
+    environment:
+      - RSPEC_PROGRESS=true
+    command:
+      bash -c 'export BUNDLE_GEMFILE=.gems-$$RUBY_MAJOR.rb && cd /app && cp gems.rb $$BUNDLE_GEMFILE && bundle install --quiet && bundle exec rake && rm $$BUNDLE_GEMFILE*'
 
 volumes:
   bundle-2.1:
@@ -93,3 +102,4 @@ volumes:
   bundle-2.7:
   bundle-3.0:
   bundle-3.1:
+  bundle-3.2:
