@@ -582,7 +582,7 @@ static void mod_to_s_singleton(VALUE klass, strbuilder_t *strout) {
   if (singleton_of == rb_cModule || singleton_of == rb_cClass) {
     // The first case. Use the id_attached symbol to get what this is the
     // singleton_class _of_.
-    st_lookup(RCLASS_IV_TBL(klass), id__attached__, (st_data_t *)&singleton_of);
+    singleton_of = rb_ivar_get(klass, id__attached__);
   }
   mod_to_s(singleton_of, strout);
 }
