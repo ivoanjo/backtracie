@@ -621,6 +621,31 @@ RSpec.describe Backtracie do
       end
     end
 
+    context "when sampling a method defined in a class's singleton class" do
+      class AnotherClassToGetASingletonMethodDefined
+      end
+
+      let(:the_singleton_class) {
+        AnotherClassToGetASingletonMethodDefined.singleton_class.tap { |it|
+          def it.test_method
+            yield
+          end
+        }
+      }
+
+      # These two function calls should never be reformatted to be on different lines!
+      # See above for a note on why this looks weird
+      let!(:backtraces_for_comparison) {
+        [the_singleton_class.test_method { described_class.backtrace_locations(Thread.current) }, the_singleton_class.test_method { Thread.current.backtrace_locations }]
+      }
+
+      it_should_behave_like "an equivalent of the Ruby API (using locations)"
+
+      it do
+        expect(backtracie_stack[2].qualified_method_name).to eq "AnotherClassToGetASingletonMethodDefined$singleton.test_method"
+      end
+    end
+
     context "when a sampling an instance of an anonymous subclass of some class" do
       let(:object) {
         c1 = Class.new(Array)
