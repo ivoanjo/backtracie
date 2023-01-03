@@ -46,7 +46,7 @@ task default: [
 
 desc "Test all supported Rubies in docker"
 task :"test-all" do
-  ["2.3", "2.4", "2.5", "2.6", "2.7", "3.0", "3.1"].each do |version|
+  ["2.3", "2.4", "2.5", "2.6", "2.7", "3.0", "3.1", "3.2"].each do |version|
     sh "docker-compose run ruby-#{version}"
   end
 end
