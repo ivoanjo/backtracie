@@ -609,9 +609,17 @@ static void mod_to_s(VALUE klass, strbuilder_t *strout) {
 
   VALUE klass_name = rb_mod_name(klass);
   if (!RTEST(rb_mod_name(klass))) {
-    mod_to_s_anon(klass, strout);
-    strbuilder_append(strout, "$anonymous");
-    return;
+    // If I understood it correctly, a T_ICLASS represents the inclusion of a module into
+    // a class. In this situation, we usually want to use the module name instead.
+    if (RB_TYPE_P(klass, T_ICLASS)) {
+      VALUE included_module = RBASIC(klass)->klass;
+      mod_to_s(included_module, strout);
+      return;
+    } else {
+      mod_to_s_anon(klass, strout);
+      strbuilder_append(strout, "$anonymous");
+      return;
+    }
   }
 
   // Non-anonymous module/class.

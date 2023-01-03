@@ -110,8 +110,6 @@ RSpec.describe Backtracie do
       it_should_behave_like "an equivalent of the Ruby API (using locations)"
 
       it do
-        # On Ruby 2.3, this prints "Object$anonymous#backtraces_for_comparison{block}". Need to investigate.
-        pending "broken on Ruby 2.3" if RUBY_VERSION < "2.4"
         # This used to expect "${self.class.name}$singleton", but actually this is more correct - the
         # backtraces_for_comparison method is actually defined on a ::LetDefinitions class that's included
         # in the test class.
