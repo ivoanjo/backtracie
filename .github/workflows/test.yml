@@ -14,6 +14,8 @@ jobs:
             ruby: '3.2'
           - os: windows-latest
             ruby: head
+          - os: windows-latest
+            ruby: debug
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
