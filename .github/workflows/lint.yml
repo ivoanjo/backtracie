@@ -1,0 +1,23 @@
+name: lint
+
+on: [push, pull_request]
+
+jobs:
+  lint-c:
+    name: 'Lint C code'
+    runs-on: ['ubuntu-latest']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run clang-format
+      uses: jidicula/clang-format-action@v4
+      with:
+        clang-format-version: '14'
+  lint-rb:
+    name: 'Lint Ruby code'
+    runs-on: ['ubuntu-latest']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run standardrb
+      uses: andrewmcodes/standardrb-action@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
